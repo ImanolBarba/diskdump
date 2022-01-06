@@ -1,0 +1,19 @@
+# This is a Borland Makefile, not GNU
+
+CC=C:\TC\BIN\TCC.EXE
+	
+CFILES=DISKDUMP.C DISK.C DUMP.C FILE.C HEX.C MD5.C MEM.C NULL.C \
+			 SHA1.C SHA256.C STDOUT.C
+
+DISKDUMP.EXE: clean $(CFILES)
+	!if $d(DEBUG)
+	  $(CC) -v -y $(CFILES)
+	!elif $d(SPEED)
+    $(CC) -G $(CFILES)	
+	!else	
+	  $(CC) $(CFILES)
+	!endif
+
+clean:
+	del *.obj *.exe > NUL
+	
