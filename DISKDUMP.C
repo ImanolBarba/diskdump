@@ -29,22 +29,46 @@
 #include "sha256.h"
 
 uint8_t quiet = 0;
-uint8_t progress_bar = 0;
+uint8_t progress = 0;
+
+typedef enum digest_type {
+  DIGEST_UNKNOWN = 0,
+  DIGEST_MD5 = 1,
+  DIGEST_SHA1 = 2,
+  DIGEST_SHA256 = 3
+} digest_type;
+
+typedef enum medium_type {
+  MEDIUM_UNKNOWN = 0,
+  MEDIUM_FILE = 1,
+  MEDIUM_HEX = 2,
+  MEDIUM_STDOUT = 3,
+  MEDIUM_NULL = 4,
+  MEDIUM_FLOPPY = 5,
+  MEDIUM_ZMODEM = 6,
+  MEDIUM_TCP = 7
+} medium_type;
+
+typedef enum mode {
+  MODE_UNKNOWN = 0,
+  MODE_LIST = 1,
+  MODE_DUMP = 2
+} mode;
 
 typedef struct args {
   uint8_t list;
-  uint8_t help;
   const char* path;
   ulongint file_size;
   uint8_t floppy;
   uint8_t zmodem;
-  const char hostname;
+  const char* hostname;
   uint16_t port;
   uint8_t md5;
   uint8_t sha1;
   uint8_t sha256;
   uint8_t hex;
   uint8_t stdout_output;
+  uint8_t null_output;
   const char* drive_num;
 } args;
 
@@ -54,48 +78,164 @@ void print_help() {
 }
 
 int parse_args(int argc, char** argv, args* cmd) {
-  // TODO 
-  // hash flags are exclusive
-  // medium flags are exclusive
-  // set progress_bar
-  // set quiet
+  int status;
+  int i;
+  long num;
+  mode md = MODE_UNKNOWN;
+  digest_type d = DIGEST_UNKNOWN;
+  medium_type m = MEDIUM_UNKNOWN;
+  cmd->file_size = DEFAULT_FILE_SIZE;
+  for(i = 1; i < argc; ++i) {
+    if(!strcmp(argv[i], "/L")) {
+      if(md != MODE_UNKNOWN) {
+        printf("More than one mode specified\n");
+        return 1;
+      }
+      md = MODE_LIST;
+      cmd->list = 1;
+    } else if(!strcmp(argv[i], "/N")) {
+      if(md != MODE_UNKNOWN) {
+        printf("More than one mode specified\n");
+        return 1;
+      }
+      md = MODE_DUMP;
+      cmd->drive_num = argv[++i];
+    } else if(!strcmp(argv[i], "/?")) {
+      // Fuck the rest of the parsing
+      print_help();
+      exit(0);
+    } else if(!strcmp(argv[i], "/D")) {
+      if(m != MEDIUM_UNKNOWN) {
+        printf("More than one medium specified\n");
+        return 1;
+      }
+      m = MEDIUM_FILE;
+      cmd->path = argv[++i];
+    } else if(!strcmp(argv[i], "/Z")) {
+      status = parse_num(&num, argv[++i]);
+      if(status) {
+        printf("Invalid file size specified: %s\n", argv[i]);
+        return 1;
+      }
+      cmd->file_size = (ulongint)num;
+    } else if(!strcmp(argv[i], "/F")) {
+      if(m != MEDIUM_UNKNOWN) {
+        printf("More than one medium specified\n");
+        return 1;
+      }
+      m = MEDIUM_FLOPPY;
+      cmd->floppy = 1;  
+    } else if(!strcmp(argv[i], "/ZM")) {
+      if(m != MEDIUM_UNKNOWN) {
+        printf("More than one medium specified\n");
+        return 1;
+      }
+      m = MEDIUM_ZMODEM;
+      cmd->zmodem = 1;
+    } else if(!strcmp(argv[i], "/H")) {
+      if(m != MEDIUM_UNKNOWN) {
+        printf("More than one medium specified\n");
+        return 1;
+      }
+      m = MEDIUM_TCP;
+      cmd->hostname = argv[++i];
+    } else if(!strcmp(argv[i], "/P")) {
+      status = parse_num(&num, argv[++i]);
+      if(status) {
+        printf("Invalid port specified: %s\n", argv[i]);
+        return 1;
+      }
+      cmd->port = (uint16_t)num;
+    } else if(!strcmp(argv[i], "/X")) {
+      if(m != MEDIUM_UNKNOWN) {
+        printf("More than one medium specified\n");
+        return 1;
+      }
+      m = MEDIUM_HEX;
+      cmd->hex = 1;
+    } else if(!strcmp(argv[i], "/O")) {
+      if(m != MEDIUM_UNKNOWN) {
+        printf("More than one medium specified\n");
+        return 1;
+      }
+      m = MEDIUM_STDOUT;
+      cmd->stdout_output = 1;
+    } else if(!strcmp(argv[i], "/0")) {
+      if(m != MEDIUM_UNKNOWN) {
+        printf("More than one medium specified\n");
+        return 1;
+      }
+      m = MEDIUM_NULL;
+      cmd->null_output = 1;
+    } else if(!strcmp(argv[i], "/MD5")) {
+      if(d != DIGEST_UNKNOWN) {
+        printf("More than one digest specified\n");
+        return 1;
+      }
+      d = DIGEST_MD5;
+      cmd->md5 = 1;
+    } else if(!strcmp(argv[i], "/SHA")) {
+      if(d != DIGEST_UNKNOWN) {
+        printf("More than one digest specified\n");
+        return 1;
+      }
+      d = DIGEST_SHA1;
+      cmd->sha1 = 1;
+    } else if(!strcmp(argv[i], "/SHA2")) {
+      if(d != DIGEST_UNKNOWN) {
+        printf("More than one digest specified\n");
+        return 1;
+      }
+      d = DIGEST_SHA256;
+      cmd->sha256 = 1;
+    } else if(!strcmp(argv[i], "/B")) {
+      progress = 1;
+    } else if(!strcmp(argv[i], "/Q")) {
+      quiet = 1;
+    } else {
+      printf("Unrecognised token: %s\n", argv[i]);
+      return 1;
+    }
+  }
   return 0;
 }
 
-int get_drive_num(uint8_t* drive_num, const char* num_str) {
+int parse_num(long* num, const char* num_str) {
   char* endptr;
-  long num = strtol(num_str, &endptr, 10);
+  long num_ret = strtoul(num_str, &endptr, 0);
   if(num == 0 && endptr != (num_str + strlen(num_str))) {
     return 1;
   }
-  *drive_num = (uint8_t)num;
+  *num = num_ret;
   return 0;
 }
 
 // -- ACTIONS --
 // --list     [DONE] /L
 // --help            /?
-// --source          /S (source)
+// --drive    [DONE] /N (drive_num)
 // -- MEDIUMS --
 // --file     [DONE] /D ARG /Z ARG
 // --floppy          /F
-// --zmodem          /Z
+// --zmodem          /ZM
 // --tcp             /H ARG /P ARG
 // --hex      [DONE] /X
 // --stdout   [DONE] /O
+// --null     [DONE] /0
 // -- DIGESTS --
-// --md5      [DONE] /M
+// --md5      [DONE] /MD5
 // --sha1     [DONE] /SHA
-// --sha256   [DONE] /SHA256
+// --sha256   [DONE] /SHA2
 // -- OTHER --
 // --progress        /B
 // --quiet           /Q
+
 int main(int argc, char **argv) {
   args cmd;
   int status;
   
   // Disk data
-  uint8_t drive_num;
+  long drive_num;
   legacy_descriptor ld;
   drive_descriptor dd;
 
@@ -103,7 +243,6 @@ int main(int argc, char **argv) {
   Medium m;
   file_medium_data fmd;
   hex_medium_data hmd;
-  ulongint file_size;
   
   // Digest data
   Digest _hash;
@@ -126,9 +265,11 @@ int main(int argc, char **argv) {
     return 1;
   }
   if(cmd.list) {
+    // We're listing drives  
     list_disks();
   } else if(cmd.drive_num) {
-    status = get_drive_num(&drive_num, cmd.drive_num);
+    // We're dumping a disk
+    status = parse_num(&drive_num, cmd.drive_num);
     if(status) {
       printf("Invalid drive number specified: %s\n", cmd.drive_num);
     }
@@ -142,12 +283,7 @@ int main(int argc, char **argv) {
       hash = NULL;
     }
     if(cmd.path) {
-      if(cmd.file_size) {
-        file_size = cmd.file_size;
-      } else {
-        file_size = DEFAULT_FILE_SIZE;
-      }
-      status = create_file_medium(cmd.path, file_size, &m, &fmd, hash);
+      status = create_file_medium(cmd.path, cmd.file_size, &m, &fmd, hash);
       if(status) {
         printf("Unable to create file medium\n");
         return 1;
@@ -156,18 +292,20 @@ int main(int argc, char **argv) {
       create_hex_medium(&m, &hmd, hash);
     } else if(cmd.stdout_output) {
       create_stdout_medium(&m, hash);
+    } else if(cmd.null_output) {
+      create_null_medium(&m, hash);
     } else {
       printf("Medium not selected\n");
       return 1;
     }
     if(drive_num & HARD_DISK_FLAG) {
-      dd.drive_num = drive_num;
+      dd.drive_num = (uint8_t)drive_num;
       get_drive_data_disk(&dd);
       printf("Dumping data from:\n\n");
       print_drive_data_disk(&dd);
       status = dump_hard_drive(&dd, &m);
     } else {
-      ld.drive_num = drive_num;
+      ld.drive_num = (uint8_t)drive_num;
       get_drive_data_floppy(&ld);
       printf("Dumping data from:\n\n");
       print_drive_data_floppy(&ld);
@@ -189,6 +327,7 @@ int main(int argc, char **argv) {
       printf("SHA256: %s\n", hash_str_sha256);
     }
   } else {
+    // I don't know WTF we're doing so, let's print help
     print_help();
   }
   return 0;

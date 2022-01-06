@@ -130,7 +130,7 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
 }
 
 void print_drive_data_floppy(legacy_descriptor *ld) {
-  printf("Drive number:\t\t%02X\n", ld->drive_num);
+  printf("Drive number:\t\t0x%02X\n", ld->drive_num);
   printf("Cylinders:\t\t%d\n", ld->num_cylinders);
   printf("Heads:\t\t\t%d\n", ld->num_heads);
   printf("Sectors per track:\t%d\n", ld->sectors_per_track);
@@ -161,7 +161,7 @@ void print_drive_data_floppy(legacy_descriptor *ld) {
 }
 
 void print_drive_data_disk(drive_descriptor *dd) {
-  printf("Drive number:\t\t%02X\n", dd->drive_num);
+  printf("Drive number:\t\t0x%02X\n", dd->drive_num);
   printf("Cylinders:\t\t%ld\n", dd->num_cylinders);
   printf("Heads:\t\t\t%ld\n", dd->num_heads);
   printf("Sectors per track:\t%ld\n", dd->sectors_per_track);
