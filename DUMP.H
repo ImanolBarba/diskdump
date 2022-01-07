@@ -23,10 +23,14 @@
 
 #include <stdio.h>
 #include <dos.h>
+#include <conio.h>
 #include "disk.h"
 #include "medium.h"
 #include "mem.h"
 #include "types.h"
+
+#define BAR_WIDTH 70
+#define MAX_LEN_UINT32_STR 10
 
 void list_disks();
 int dump_floppy_drive(legacy_descriptor* ld, Medium* m);

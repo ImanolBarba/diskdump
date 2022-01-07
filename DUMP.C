@@ -20,6 +20,47 @@
 
 #include "dump.h"
 
+extern uint8_t progress;
+size_t num_equals = 0;
+
+// Printing progress will inevitably slow things down a bit if the
+// delay introduced by the digest function and IO is too small
+void print_progress(ulongint current, ulongint total) {
+  char num_str[MAX_LEN_UINT32_STR + 1];
+  float percent = (float)current/total;
+  size_t num_equals_new = (size_t)(percent * BAR_WIDTH);
+  int i;
+  if(!current) {
+    // Okay so all of this bullshit is so we can make the redrawing
+    // logic simpler and save some precious run time. It's a one off
+    // the first time the progress bar is drawn.
+    sprintf(num_str, "%lu", total);
+    printf("0");
+    for(i = 0; i < strlen(num_str)-1; ++i) {
+      printf(" ");
+    }
+    printf(" out of %lu sectors\n", total);
+    // Draw bar if first time
+    printf("%.02f\%   [                                                                      ]", 100*percent);
+    gotoxy(1, wherey()-1);
+  } else {
+    gotoxy(1, wherey()-1);
+    printf("%lu", current);
+    gotoxy(1, wherey()+1);
+    printf("%.02f\%", 100*percent);
+    if(num_equals_new != num_equals) {
+      // Only write to the screen if we need to update
+      num_equals = num_equals_new;
+      gotoxy(10 + num_equals_new-1, wherey());
+      if(num_equals == BAR_WIDTH) {
+        printf("=");
+      } else {
+        printf("=>");
+      }
+    }
+  }
+}
+
 void list_disks() {
   drive_descriptor dd;
   legacy_descriptor ld;
@@ -65,8 +106,10 @@ int dump_floppy_drive(legacy_descriptor* ld, Medium* m) {
     return -1;
   }
   buf = MK_FP(get_DMA_boundary_segment(segment), 0x0000);
+  if(progress) {
+    print_progress(ld->current_sector, ld->num_sectors);
+  }
   while((bytes_read = read_drive_chs(ld, buf, MAX_SECTORS_CHS)) != 0) {
-
     if(bytes_read < 0) {
       printf("Failed to read floppy\n");
       free_segment(segment);
@@ -75,12 +118,14 @@ int dump_floppy_drive(legacy_descriptor* ld, Medium* m) {
     if(m->digest) {
       m->digest->digest(buf, (ulongint)bytes_read, m->digest->data);
     }
-
     bytes_sent = m->send(buf, bytes_read, m->data);
     if(bytes_read != bytes_sent) {
       printf("Came short when transferring to medium :(\n");
       free_segment(segment);
       return -1;
+    }
+    if(progress) {
+      print_progress(ld->current_sector, ld->num_sectors);
     }
     if(!m->ready(m->data)) {
       printf("Medium not ready\n");
@@ -121,6 +166,9 @@ int dump_hard_drive(drive_descriptor* dd, Medium* m) {
     return -1;
   }
   buf = MK_FP(get_DMA_boundary_segment(segment), 0x0000);
+  if(progress) {
+    print_progress(dd->current_sector, dd->num_sectors);
+  }
   // We will only request the maximum sectors of LBA that can be read 
   // at once tops, if we go for maximum 128 we end up doing 2 transfers,
   // one for 127 sectors and 1 for 1 sector, which is inefficient.
@@ -138,6 +186,9 @@ int dump_hard_drive(drive_descriptor* dd, Medium* m) {
       printf("Came short when transferring to medium :(\n");
       free_segment(segment);
       return -1;
+    }
+    if(progress) {
+      print_progress(dd->current_sector, dd->num_sectors);
     }
     if(!m->ready(m->data)) {
       printf("Medium not ready\n");

@@ -25,7 +25,7 @@ uint16_t get_DMA_boundary_segment(uint16_t segment) {
   // boundary for DMA transfer.
   // We need to find where within is such boundary in the segment that
   // DOS gave us and express it as a 0 offset segment.
-  return 0x1000 * ceil((double)segment/0x1000); 
+  return (uint16_t)(0x1000 * ceil((double)segment/0x1000)); 
 }
 
 uint16_t alloc_segment(uint16_t* segment, uint16_t* largest_block) {

@@ -27,6 +27,9 @@ const char ext_sequence[MAX_EXT_SEQUENCE] = {
   '`','{','}','~'
 };
 
+// Why tf am I dealing with DOS file handle routines instead of
+// using stdio FILEs? Well because those don't take far pointers :_D
+
 uint16_t file_tell(uint16_t handle, ulongint* file_offset) {
   uint16_t status = 0;
  

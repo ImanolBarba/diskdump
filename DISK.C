@@ -64,7 +64,6 @@ int get_drive_data_disk(drive_descriptor* dd) {
     // disk size were to be 2TB+, which we simply won't find
     dd->sector_size = *((uint16_t*)(drive_params+24));
     dd->current_sector = 0;
-    dd->last_sector_offset = 0;
   }
   return (int)status;
 }
@@ -124,7 +123,6 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
     }
     ld->num_sectors = ld->num_heads * ld->num_cylinders * ld->sectors_per_track;
     ld->current_sector = 0;
-    ld->last_sector_offset = 0;
   }
   return (int)status;
 }
@@ -136,8 +134,6 @@ void print_drive_data_floppy(legacy_descriptor *ld) {
   printf("Sectors per track:\t%d\n", ld->sectors_per_track);
   printf("Sector size:\t\t%d\n", ld->sector_size);
   printf("Total sectors:\t\t%ld\n", ld->num_sectors);
-  printf("Current sector:\t\t%ld\n", ld->current_sector);
-  printf("Last sector offset:\t%d\n", ld->last_sector_offset);
   printf("Floppy Type:\t\t");
   switch(ld->floppy_type) {
     case FLOPPY_TYPE_360K:
@@ -167,8 +163,6 @@ void print_drive_data_disk(drive_descriptor *dd) {
   printf("Sectors per track:\t%ld\n", dd->sectors_per_track);
   printf("Sector size:\t\t%d\n", dd->sector_size);
   printf("Total sectors:\t\t%ld\n",dd->num_sectors);
-  printf("Current sector:\t\t%ld\n", dd->current_sector);
-  printf("Last sector offset:\t%d\n", dd->last_sector_offset);
   printf("\n");
 }
 

@@ -72,9 +72,44 @@ typedef struct args {
   const char* drive_num;
 } args;
 
-void print_help() {
-  // TODO
-  printf("Help!\n");
+void print_help(const char* exename) {
+  signed short last_backslash;
+  for(last_backslash = strlen(exename); exename[last_backslash] != '\\' && last_backslash > -1; --last_backslash) {
+    // nothing to see here
+  }
+  if(last_backslash) {
+    last_backslash++;
+  } 
+  printf("%s ACTION MEDIUM [HASH] [OTHER]\n", exename + last_backslash);
+  printf("\n");
+  printf("ACTIONS:\n");
+  printf("\t/L List all drives reported by BIOS\n");
+  printf("\t/N DRIVE_NUM Dump data from drive DRIVE_NUM\n");
+  printf("\t\t`/N 0x80` -- Dump first disk\n");
+  printf("\t/? Print help\n");
+  printf("\n");
+  printf("MEDIUMS:\n");
+  printf("\t/D PATH Dump to files in the specified directory.\n");
+  printf("\t/Z SIZE Size in bytes of the files. Default is 1474560\n");
+  printf("\t\t`/D D:\\DUMP /Z 1000000`\n");
+  printf("\t/F DRIVE_NUM Dump to floppy disks in the specified drive\n");
+  printf("\t\t/F 0x00 -- Dump to first floppy unit (A:\\)\n");
+  printf("\t/ZM Dump through serial port using ZMODEM protocol\n");
+  printf("\t/H HOSTNAME Dump to TCP server. Netcat should work\n");
+  printf("\t/P PORT TCP port to connect to. Default port is 5700\n");
+  printf("\t\t`/H 1.2.3.4 /P 1234` -- Dump to TCP server on 1.2.3.4:1234\n");
+  printf("\t/X Dump data through stdout in hexdump format\n");
+  printf("\t/O Dump data directly to stdout. Can be piped or redirected to a file\n");
+  printf("\t/0 Don't dump data. Useful to only calculate hash\n");
+  printf("\n");
+  printf("HASHES:\n");
+  printf("\t/MD5 Calculate MD5 hash\n");
+  printf("\t/SHA Calculate SHA1 hash. Somewhat slow\n");
+  printf("\t/SHA2 Calculate SHA256 hash. VERY slow\n");
+  printf("\n");
+  printf("OTHER FLAGS:\n");
+  printf("\t/B Display progress bar\n");
+  printf("\t/Q Quiet. Don't print anything to stdout. Necessary with /O\n");  
 }
 
 int parse_args(int argc, char** argv, args* cmd) {
@@ -102,7 +137,7 @@ int parse_args(int argc, char** argv, args* cmd) {
       cmd->drive_num = argv[++i];
     } else if(!strcmp(argv[i], "/?")) {
       // Fuck the rest of the parsing
-      print_help();
+      print_help(argv[0]);
       exit(0);
     } else if(!strcmp(argv[i], "/D")) {
       if(m != MEDIUM_UNKNOWN) {
@@ -168,6 +203,9 @@ int parse_args(int argc, char** argv, args* cmd) {
       m = MEDIUM_NULL;
       cmd->null_output = 1;
     } else if(!strcmp(argv[i], "/MD5")) {
+      if(quiet) {
+        continue;
+      }
       if(d != DIGEST_UNKNOWN) {
         printf("More than one digest specified\n");
         return 1;
@@ -175,6 +213,9 @@ int parse_args(int argc, char** argv, args* cmd) {
       d = DIGEST_MD5;
       cmd->md5 = 1;
     } else if(!strcmp(argv[i], "/SHA")) {
+      if(quiet) {
+        continue;
+      }
       if(d != DIGEST_UNKNOWN) {
         printf("More than one digest specified\n");
         return 1;
@@ -182,6 +223,9 @@ int parse_args(int argc, char** argv, args* cmd) {
       d = DIGEST_SHA1;
       cmd->sha1 = 1;
     } else if(!strcmp(argv[i], "/SHA2")) {
+      if(quiet) {
+        continue;
+      }
       if(d != DIGEST_UNKNOWN) {
         printf("More than one digest specified\n");
         return 1;
@@ -189,8 +233,19 @@ int parse_args(int argc, char** argv, args* cmd) {
       d = DIGEST_SHA256;
       cmd->sha256 = 1;
     } else if(!strcmp(argv[i], "/B")) {
+      if(quiet) {
+        continue;
+      }
+      if(m == MEDIUM_HEX || m == MEDIUM_STDOUT) {
+        continue;
+      }  
       progress = 1;
     } else if(!strcmp(argv[i], "/Q")) {
+      cmd->md5 = 0;
+      cmd->sha1 = 0;
+      cmd->sha256 = 0;
+      progress = 0;
+      d = DIGEST_UNKNOWN;
       quiet = 1;
     } else {
       printf("Unrecognised token: %s\n", argv[i]);
@@ -212,7 +267,7 @@ int parse_num(long* num, const char* num_str) {
 
 // -- ACTIONS --
 // --list     [DONE] /L
-// --help            /?
+// --help     [DONE] /?
 // --drive    [DONE] /N (drive_num)
 // -- MEDIUMS --
 // --file     [DONE] /D ARG /Z ARG
@@ -227,8 +282,8 @@ int parse_num(long* num, const char* num_str) {
 // --sha1     [DONE] /SHA
 // --sha256   [DONE] /SHA2
 // -- OTHER --
-// --progress        /B
-// --quiet           /Q
+// --progress [DONE] /B
+// --quiet    [DONE] /Q
 
 int main(int argc, char **argv) {
   args cmd;
@@ -261,7 +316,7 @@ int main(int argc, char **argv) {
   memset(&cmd, 0x00, sizeof(args));
   status = parse_args(argc, argv, &cmd);
   if(status) {
-    print_help();
+    print_help(argv[0]);
     return 1;
   }
   if(cmd.list) {
@@ -301,21 +356,27 @@ int main(int argc, char **argv) {
     if(drive_num & HARD_DISK_FLAG) {
       dd.drive_num = (uint8_t)drive_num;
       get_drive_data_disk(&dd);
-      printf("Dumping data from:\n\n");
-      print_drive_data_disk(&dd);
+      if(!quiet) {
+        printf("Dumping data from:\n\n");
+        print_drive_data_disk(&dd);
+      }
       status = dump_hard_drive(&dd, &m);
     } else {
       ld.drive_num = (uint8_t)drive_num;
       get_drive_data_floppy(&ld);
-      printf("Dumping data from:\n\n");
-      print_drive_data_floppy(&ld);
+      if(!quiet) {
+        printf("Dumping data from:\n\n");
+        print_drive_data_floppy(&ld);
+      }
       status = dump_floppy_drive(&ld, &m);
     }
     if(status) {
-      printf("Dump returned: %d\n", status);
+      printf("\n\nDump returned: %d\n", status);
       return 1;
     }
-    printf("Finished dump successfully :)\n");
+    if(!quiet) {
+      printf("\n\nFinished dump successfully :)\n");
+    }
     if(cmd.md5) {
       get_md5_hash_string(&(mdd.hash_state), hash_str_md5);
       printf("MD5: %s\n", hash_str_md5);
@@ -328,7 +389,7 @@ int main(int argc, char **argv) {
     }
   } else {
     // I don't know WTF we're doing so, let's print help
-    print_help();
+    print_help(argv[0]);
   }
   return 0;
 }

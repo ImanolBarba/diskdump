@@ -20,23 +20,36 @@
 
 #include "hex.h"
 
-void print_offset(ulongint hi, ulongint lo) {
-  printf("%04X%04X%04X%04X: ", *((uint16_t*)((uint8_t*)(&hi)+2)), *((uint16_t*)(&hi)), *((uint16_t*)((uint8_t*)(&lo)+2)), *((uint16_t*)(&lo)));
+void print_offset(uint8_t hi, ulongint lo) {
+  printf("%02X%04X%04X  ", hi, *((uint16_t*)((uint8_t*)(&lo)+2)), *((uint16_t*)(&lo)));
 }
 
+int is_printable(unsigned char c) {
+  if(c >= 0x20 && c < 127) {
+    return 1;
+  }
+  return 0;
+}
 
 ssize_t hex_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
   ulongint i;
+  unsigned char ascii_str[17];
   hex_medium_data* hmd = (hex_medium_data*)md;
   print_offset(hmd->current_offset_hi, hmd->current_offset_lo);
   for(i = 0; i < buf_len; ++i) {
     printf("%02X ",buf[i]);
+    if(is_printable(buf[i])) {
+      ascii_str[i%16] = buf[i];
+    } else {
+      ascii_str[i%16] = '.';
+    }
     if(i % 16 == 15) {
       if(hmd->current_offset_lo + 16 < hmd->current_offset_lo) {
         hmd->current_offset_hi++;
       }
       hmd->current_offset_lo += 16;
-      printf("\n");
+      ascii_str[16] = '\0';
+      printf(" |%s|\n", ascii_str);
       print_offset(hmd->current_offset_hi, hmd->current_offset_lo);
     }
   }

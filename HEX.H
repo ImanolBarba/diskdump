@@ -24,8 +24,10 @@
 #include "medium.h"
 #include "digest.h"
 
+// Maxium displayable size is 1TB, which is fine
+
 typedef struct hex_medium_data {
-  ulongint current_offset_hi;
+  uint8_t current_offset_hi;
   ulongint current_offset_lo;
 } hex_medium_data;
 

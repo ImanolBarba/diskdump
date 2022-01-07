@@ -59,7 +59,6 @@ typedef struct legacy_descriptor {
   uint8_t drive_num;
   uint sector_size;
   ulongint current_sector;
-  uint last_sector_offset;
   ulongint num_sectors;
 } legacy_descriptor;
 
@@ -71,7 +70,6 @@ typedef struct drive_descriptor {
   uint16_t sector_size;
   uint32_t num_sectors;
   ulongint current_sector;
-  uint last_sector_offset;
 } drive_descriptor;
 
 typedef struct DAP {
