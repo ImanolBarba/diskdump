@@ -16,13 +16,34 @@ Hashes:
 - SHA1
 - SHA256
 
-# Compatibility
+## Compatibility
 
-> :warning: Besides anything said here after, I haven't tested anything yet as the development is ongoing, but the goal is to meet those compatibility requirements. In short, as far as I'm concerned, things only work in VMware using FreeDOS.
+> :warning: Besides anything said here after, I haven't tested anything yet as the development is ongoing, but the goal is to meet those compatibility requirements. In short, as far as I'm concerned, things only work in VMware using FreeDOS, yet.
 
 DISKDUMP is designed to work with original Intel 8088 hardware and DOS 2.0+. However, as we're using INT 13h to do disk IO, it's left to the BIOS implementation of each machine to not be broken and behave as expected.
 
 An example of things that might go wrong depending on BIOS: Disks are listed by calling INT 13h Service 8h to obtain disk info, if it fails we assume no disk exists at that disk number. Virtualbox BIOS implementation always returns success whether or not there are that amount of drives in the system, so the user could specify an invalid drive and there be dragons.
+
+## How to build
+
+This project is built using Borland Turbo C (I'm currently using 3.0). The Makefile provided works with Borland `make`.
+
+To build the regular build:
+```
+C:\SOURCE\DISKDUMP\> make
+```
+
+To build the debug build:
+```
+C:\SOURCE\DISKDUMP\> make /DDEBUG
+```
+
+To build the "fast" build:
+```
+C:\SOURCE\DISKDUMP\> make /DSPEED
+```
+
+Note: I have no idea if this is in any measurable way fast, it's just a compiler setting from TC. To me it did seem to do nothing except increase the file size a tiny bit so perhaps it's not noticeable for this program.
 
 ## Usage
 ```
