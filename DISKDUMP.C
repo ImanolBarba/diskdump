@@ -24,6 +24,7 @@
 #include "file.h"
 #include "hex.h"
 #include "stdout.h"
+#include "floppy.h"
 #include "md5.h"
 #include "sha1.h"
 #include "sha256.h"
@@ -60,6 +61,7 @@ typedef struct args {
   const char* path;
   ulongint file_size;
   uint8_t floppy;
+  const char* floppy_num;
   uint8_t zmodem;
   const char* hostname;
   uint16_t port;
@@ -159,7 +161,8 @@ int parse_args(int argc, char** argv, args* cmd) {
         return 1;
       }
       m = MEDIUM_FLOPPY;
-      cmd->floppy = 1;  
+      cmd->floppy = 1;
+      cmd->floppy_num = argv[++i];  
     } else if(!strcmp(argv[i], "/ZM")) {
       if(m != MEDIUM_UNKNOWN) {
         printf("More than one medium specified\n");
@@ -271,7 +274,7 @@ int parse_num(long* num, const char* num_str) {
 // --drive    [DONE] /N (drive_num)
 // -- MEDIUMS --
 // --file     [DONE] /D ARG /Z ARG
-// --floppy          /F
+// --floppy   [DONE] /F ARG
 // --zmodem          /ZM
 // --tcp             /H ARG /P ARG
 // --hex      [DONE] /X
@@ -298,6 +301,8 @@ int main(int argc, char **argv) {
   Medium m;
   file_medium_data fmd;
   hex_medium_data hmd;
+  floppy_medium_data fmd2;
+  long floppy_num; // for floppy medium
   
   // Digest data
   Digest _hash;
@@ -349,13 +354,29 @@ int main(int argc, char **argv) {
       create_stdout_medium(&m, hash);
     } else if(cmd.null_output) {
       create_null_medium(&m, hash);
+    } else if(cmd.floppy) {
+      status = parse_num(&floppy_num, cmd.floppy_num);
+      if(status) {
+        printf("Invalid destination floppy number specified: %s\n", cmd.floppy_num);
+      }
+      fmd2.ld.drive_num = (uint8_t)floppy_num;
+      status = get_drive_data_floppy(&(fmd2.ld));
+      if(status) {
+        printf("Unable to get floppy drive data. Invalid destination floppy number specified: %02X\n", (uint8_t)floppy_num);
+        return 1;
+      }
+      create_floppy_medium(&m, &fmd2, hash);
     } else {
       printf("Medium not selected\n");
       return 1;
     }
     if(drive_num & HARD_DISK_FLAG) {
       dd.drive_num = (uint8_t)drive_num;
-      get_drive_data_disk(&dd);
+      status = get_drive_data_disk(&dd);
+      if(status) {
+        printf("Invalid drive number specified: %02X\n", (uint8_t)drive_num);
+        return 1;
+      }
       if(!quiet) {
         printf("Dumping data from:\n\n");
         print_drive_data_disk(&dd);
@@ -363,7 +384,11 @@ int main(int argc, char **argv) {
       status = dump_hard_drive(&dd, &m);
     } else {
       ld.drive_num = (uint8_t)drive_num;
-      get_drive_data_floppy(&ld);
+      status = get_drive_data_floppy(&ld);
+      if(status) {
+        printf("Invalid drive number specified: %02X\n", (uint8_t)drive_num);
+        return 1;
+      }
       if(!quiet) {
         printf("Dumping data from:\n\n");
         print_drive_data_floppy(&ld);

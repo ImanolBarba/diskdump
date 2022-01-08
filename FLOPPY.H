@@ -23,11 +23,14 @@
 
 #include "medium.h"
 #include "disk.h"
+#include "types.h"
+
+#define MAX_RETRIES 3
 
 typedef struct floppy_medium_data {
   legacy_descriptor ld;
-} file_medium_data;
+} floppy_medium_data;
 
-int create_floppy_medium(Medium* m, floppy_medium_data* fmd);
+int create_floppy_medium(Medium* m, floppy_medium_data* fmd, Digest* digest);
 
 #endif

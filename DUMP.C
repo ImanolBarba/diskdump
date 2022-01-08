@@ -50,13 +50,14 @@ void print_progress(ulongint current, ulongint total) {
     printf("%.02f\%", 100*percent);
     if(num_equals_new != num_equals) {
       // Only write to the screen if we need to update
-      num_equals = num_equals_new;
-      gotoxy(10 + num_equals_new-1, wherey());
-      if(num_equals == BAR_WIDTH) {
+      gotoxy(10 + num_equals, wherey());
+      for(i = num_equals; i < num_equals_new; ++i) {
         printf("=");
-      } else {
-        printf("=>");
       }
+      if(i != BAR_WIDTH) {
+        printf(">");
+      }
+      num_equals = num_equals_new;
     }
   }
 }

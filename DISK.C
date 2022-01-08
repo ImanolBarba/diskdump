@@ -39,12 +39,16 @@ int check_extensions_present(uint8_t drive_num) {
 
 int get_drive_data_disk(drive_descriptor* dd) {
   uint8_t status = 0;
-  uint8_t drive_num = dd->drive_num;
   uint16_t dp_segment = FP_SEG(drive_params);
   uint16_t dp_offset = FP_OFF(drive_params);
+  uint8_t drive_num = dd->drive_num;
+
+  memset(dd, 0x00, sizeof(drive_descriptor));
+  dd->drive_num = drive_num;
+
   asm {
-    MOV ah, 48h
     MOV dl, drive_num
+    MOV ah, 48h
     PUSH ds
     MOV ds, dp_segment
     MOV si, dp_offset
@@ -73,7 +77,11 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
   uint8_t bytes_per_sector_id = 0;
   uint8_t drive_num = ld->drive_num;
 
+  memset(ld, 0x00, sizeof(legacy_descriptor));
+  ld->drive_num = drive_num;
+
   asm {
+    MOV si, ld
     MOV dl, drive_num
     MOV ah, 08h
     INT 13h
@@ -127,13 +135,26 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
   return (int)status;
 }
 
+int reset_floppy(legacy_descriptor* ld) {
+  uint8_t status;
+  asm {
+    MOV si, ld
+    MOV dl, BYTE [si+5] // drive_num
+    XOR ah, ah
+    INT 13h
+    LEA si, status
+    MOV BYTE [si], ah
+  }
+  return (int)status;
+}
+
 void print_drive_data_floppy(legacy_descriptor *ld) {
   printf("Drive number:\t\t0x%02X\n", ld->drive_num);
-  printf("Cylinders:\t\t%d\n", ld->num_cylinders);
-  printf("Heads:\t\t\t%d\n", ld->num_heads);
-  printf("Sectors per track:\t%d\n", ld->sectors_per_track);
-  printf("Sector size:\t\t%d\n", ld->sector_size);
-  printf("Total sectors:\t\t%ld\n", ld->num_sectors);
+  printf("Cylinders:\t\t%u\n", ld->num_cylinders);
+  printf("Heads:\t\t\t%u\n", ld->num_heads);
+  printf("Sectors per track:\t%u\n", ld->sectors_per_track);
+  printf("Sector size:\t\t%u\n", ld->sector_size);
+  printf("Total sectors:\t\t%lu\n", ld->num_sectors);
   printf("Floppy Type:\t\t");
   switch(ld->floppy_type) {
     case FLOPPY_TYPE_360K:
@@ -158,11 +179,11 @@ void print_drive_data_floppy(legacy_descriptor *ld) {
 
 void print_drive_data_disk(drive_descriptor *dd) {
   printf("Drive number:\t\t0x%02X\n", dd->drive_num);
-  printf("Cylinders:\t\t%ld\n", dd->num_cylinders);
-  printf("Heads:\t\t\t%ld\n", dd->num_heads);
-  printf("Sectors per track:\t%ld\n", dd->sectors_per_track);
-  printf("Sector size:\t\t%d\n", dd->sector_size);
-  printf("Total sectors:\t\t%ld\n",dd->num_sectors);
+  printf("Cylinders:\t\t%lu\n", dd->num_cylinders);
+  printf("Heads:\t\t\t%lu\n", dd->num_heads);
+  printf("Sectors per track:\t%lu\n", dd->sectors_per_track);
+  printf("Sector size:\t\t%u\n", dd->sector_size);
+  printf("Total sectors:\t\t%lu\n",dd->num_sectors);
   printf("\n");
 }
 
@@ -173,13 +194,49 @@ void lba_2_chs(legacy_descriptor* ld, ulongint lba, uint8_t* c, uint8_t* h, uint
   *s = temp % ld->sectors_per_track + 1;
 }
 
+ssize_t write_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8_t sect, uint8_t sectors_to_write, uint8_t far *buf) {
+  uint8_t status;
+  uint8_t sectors_written;
+  uint16_t buf_segment = FP_SEG(buf);
+  uint16_t buf_offset = FP_OFF(buf);
+  if((sectors_to_write + (ld->current_sector % ld->sectors_per_track)) > ld->sectors_per_track) {
+    printf("Requesting cross-track write. Request write of no more than %d sectors\n", ld->sectors_per_track - (ld->current_sector % ld->sectors_per_track));
+    return -1;
+  }
+  //printf("c:%d h:%d s:%d\n",cyl, head, sect);
+  //printf("Writing %d (%ld/%ld) sectors from %04X:%04X\n", sectors_to_write, ld->current_sector, ld->num_sectors, FP_SEG(buf), FP_OFF(buf));
+  asm {
+    MOV si, ld
+    MOV dl, BYTE [si+5] // drive_num
+    MOV al, sectors_to_write
+    MOV ch, cyl
+    MOV cl, sect
+    MOV dh, head
+    PUSH es
+    MOV es, buf_segment
+    MOV bx, buf_offset
+    MOV ah, 03h
+    INT 13h
+    POP es
+    LEA si, status
+    MOV BYTE [si], ah
+    LEA si, sectors_written
+    MOV BYTE [si], al
+  }
+  if(status) {
+    printf("Write sector CHS status: %d\n", status);
+    return -1;
+  }
+  return sectors_written;
+}
+
 ssize_t read_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8_t sect, uint8_t sectors_to_read, uint8_t far *buf) {
   uint8_t status;
   uint8_t sectors_read;
   uint16_t buf_segment = FP_SEG(buf);
   uint16_t buf_offset = FP_OFF(buf);
-  if(sectors_to_read > ld->sectors_per_track) {
-    printf("Requesting cross-track read. Request read of no more than %d sectors\n", ld->sectors_per_track);
+  if((sectors_to_read + (ld->current_sector % ld->sectors_per_track)) > ld->sectors_per_track) {
+    printf("Requesting cross-track read. Request read of no more than %d sectors\n", ld->sectors_per_track - (ld->current_sector % ld->sectors_per_track));
     return -1;
   }
   //printf("c:%d h:%d s:%d\n",cyl, head, sect);
@@ -262,7 +319,6 @@ ssize_t read_drive_lba(drive_descriptor* dd, uint8_t far *segment_buf, uint sect
     dd->current_sector += num_read;
     sectors_read += num_read;
   }
-  segment_buf = MK_FP(FP_SEG(segment_buf),0x0000);
   return (ulongint)sectors_read * dd->sector_size;
 }
 
@@ -290,7 +346,6 @@ ssize_t read_drive_chs(legacy_descriptor* ld, uint8_t far *segment_buf, uint sec
     ld->current_sector += num_read;
     sectors_read += num_read;
   }
-  segment_buf = MK_FP(FP_SEG(segment_buf),0x0000);
   return (ulongint)sectors_read * ld->sector_size;
 }
 
@@ -299,25 +354,24 @@ ssize_t write_drive_chs(legacy_descriptor* ld, uint8_t far *segment_buf, uint se
   uint8_t cyl, head, sect;
   ulongint remaining_sectors = ld->num_sectors - ld->current_sector;
   uint8_t sectors_requested = min(remaining_sectors, sectors);
-  size_t sectors_read = 0;
+  size_t sectors_written = 0;
 
   if(!remaining_sectors) {
     return 0;
   }
 
-  while(sectors_read < sectors_requested) {
-    ssize_t num_read;
-    uint8_t sectors_to_read = min(ld->sectors_per_track, sectors_requested - sectors_read);
-    sectors_to_read = min(sectors_to_read, ld->sectors_per_track - (ld->current_sector % ld->sectors_per_track));
+  while(sectors_written < sectors_requested) {
+    ssize_t num_written;
+    uint8_t sectors_to_write = min(ld->sectors_per_track, sectors_requested - sectors_written);
+    sectors_to_write = min(sectors_to_write, ld->sectors_per_track - (ld->current_sector % ld->sectors_per_track));
     lba_2_chs(ld, ld->current_sector, &cyl, &head, &sect);
-    segment_buf = MK_FP(FP_SEG(segment_buf), sectors_read * ld->sector_size);
-    num_read = read_sectors_chs(ld, cyl, head, sect, sectors_to_read, segment_buf);
-    if(num_read < 0) {
+    segment_buf = MK_FP(FP_SEG(segment_buf), sectors_written * ld->sector_size);
+    num_written = write_sectors_chs(ld, cyl, head, sect, sectors_to_write, segment_buf);
+    if(num_written < 0) {
       return -1;
     }
-    ld->current_sector += num_read;
-    sectors_read += num_read;
+    ld->current_sector += num_written;
+    sectors_written += num_written;
   }
-  segment_buf = MK_FP(FP_SEG(segment_buf),0x0000);
-  return (ulongint)sectors_read * ld->sector_size;
+  return (ulongint)sectors_written * ld->sector_size;
 }

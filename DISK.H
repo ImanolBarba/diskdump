@@ -83,6 +83,7 @@ typedef struct DAP {
 int check_extensions_present(uint8_t drive_num);
 int get_drive_data_disk(drive_descriptor* dd);
 int get_drive_data_floppy(legacy_descriptor* ld);
+int reset_floppy(legacy_descriptor* ld);
 void print_drive_data_floppy(legacy_descriptor *ld);
 void print_drive_data_disk(drive_descriptor *dd);
 ssize_t read_drive_chs(legacy_descriptor* ld, uint8_t far *segment_buf, uint sectors);
@@ -91,6 +92,7 @@ ssize_t read_drive_lba(drive_descriptor* dd, uint8_t far *segment_buf, uint sect
 
 // Private
 // ssize_t read_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8_t sect, uint8_t sectors_to_read, uint8_t far *buf);
+// ssize_t write_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8_t sect, uint8_t sectors_to_write, uint8_t far *buf);
 // ssize_t read_sectors_lba(drive_descriptor* dd, DAP* d);
 
 #endif

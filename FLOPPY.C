@@ -23,36 +23,68 @@
 ssize_t floppy_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
   floppy_medium_data* fmd = (floppy_medium_data*)md;
   ssize_t bytes_written;
+  int status;
+  ssize_t total_written = 0;
   if(buf_len % fmd->ld.sector_size != 0) {
     printf("Length of buffer must be a multiple of sector size\n");
     return -1;
   }
-  bytes_written = write_drive_chs(&(fmd->ld), buf, buf_len/fmd->ld.sector_size);
-    printf("Insert new floppy...\n");
-    system(pause);
-  
-// TODO
+  while(buf_len > total_written) {
+    //printf("cs:%lu ns: %lu len: %lu writ: %ld\n", fmd->ld.current_sector, fmd->ld.num_sectors, buf_len, total_written);
+    if(fmd->ld.current_sector == fmd->ld.num_sectors) {
+      printf("Insert new floppy...\n");
+      system("pause");
+      status = floppy_medium_ready(md);
+      if(!status) {
+        printf("Floppy disk not available\n");
+        return -1;
+      }
+      status = get_drive_data_floppy(&(fmd->ld));
+      if(status) {
+        printf("Unable to get drive data: Floppy disk not available\n");
+        return -1;
+      }
+    }
+    bytes_written = write_drive_chs(&(fmd->ld), buf, (buf_len-total_written)/fmd->ld.sector_size);
+    if(bytes_written < 0) {
+      printf("Error writing to floppy\n");
+      return -1;
+    }
+    total_written += bytes_written;
+  }  
+  return total_written;  
 }
 
 int floppy_medium_ready(medium_data md) {
   int status;
+  int retries = 0;
   floppy_medium_data* fmd = (floppy_medium_data*)md;
   legacy_descriptor ld;
-  ld->drive_num = fmd->ld.drive_num;
+  ld.drive_num = fmd->ld.drive_num;
   do {
+    status = reset_floppy(&ld);
+    if(status) {
+      printf("Error resetting disk. Try a different floppy\n");
+      system("pause");
+    }
     status = get_drive_data_floppy(&ld);
     if(status) {
       printf("Floppy disk not ready. Insert floppy and retry\n");
-      system(pause);
+      system("pause");
     }
-  }while(status);
+  }while(status && (++retries != MAX_RETRIES));
+  if(status) {
+    printf("Reached maximum retries. Giving up.\n");
+    return 0;
+  }  
   return 1;
 }
 
-int create_floppy_medium(Medium* m, floppy_medium_data* fmd) {
+int create_floppy_medium(Medium* m, floppy_medium_data* fmd, Digest* digest) {
   m->send = &floppy_medium_send;
   m->ready = &floppy_medium_ready;
   m->data = (void*)fmd;
+  m->digest = digest;
   return m->ready(m->data);
 }
 
