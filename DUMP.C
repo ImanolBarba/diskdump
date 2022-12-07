@@ -110,6 +110,13 @@ int dump_floppy_drive(legacy_descriptor* ld, Medium* m) {
   if(progress) {
     print_progress(ld->current_sector, ld->num_sectors);
   }
+
+  status = reset_floppy(ld);
+  if(status) {
+    printf("Unable to reset floppy before dump\n");
+    return -1;
+  }
+
   while((bytes_read = read_drive_chs(ld, buf, MAX_SECTORS_CHS)) != 0) {
     if(bytes_read < 0) {
       printf("Failed to read floppy\n");

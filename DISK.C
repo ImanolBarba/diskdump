@@ -126,7 +126,8 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
 	ld->sector_size = 1024;
       break;
       default:
-	printf("Unknown sector size %d for drive %#.02X\n",bytes_per_sector_id, drive_num);
+	//printf("Unknown sector size %d for drive %#.02X\n",bytes_per_sector_id, drive_num);
+	return 1;
       break;
     }
     ld->num_sectors = ld->num_heads * ld->num_cylinders * ld->sectors_per_track;
@@ -260,6 +261,10 @@ ssize_t read_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8
     MOV BYTE [si], al
   }
   if(status) {
+    if(status == 0x06) {
+      // OK, we could like, clear the disk change flag OR we could just retry
+      return read_sectors_chs(ld, cyl, head, sect, sectors_to_read, buf);
+    }
     printf("Read sector CHS status: %d\n", status);
     return -1;
   }

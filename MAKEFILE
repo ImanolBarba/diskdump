@@ -15,5 +15,5 @@ DISKDUMP.EXE: clean $(CFILES)
 	!endif
 
 clean:
-	del *.obj *.exe > NUL
-	
+	del *.obj > NUL
+	del *.exe > NUL
