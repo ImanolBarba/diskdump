@@ -18,11 +18,7 @@ Hashes:
 
 ## Compatibility
 
-> :warning: Besides anything said here after, I haven't tested anything yet as the development is ongoing, but the goal is to meet those compatibility requirements. In short, as far as I'm concerned, things only work in VMware using FreeDOS, yet.
-
-DISKDUMP is designed to work with original Intel 8088 hardware and DOS 2.0+. However, as we're using INT 13h to do disk IO, it's left to the BIOS implementation of each machine to not be broken and behave as expected.
-
-An example of things that might go wrong depending on BIOS: Disks are listed by calling INT 13h Service 8h to obtain disk info, if it fails we assume no disk exists at that disk number. Virtualbox BIOS implementation always returns success whether or not there are that amount of drives in the system, so the user could specify an invalid drive and there be dragons.
+DISKDUMP works with original Intel 8088 hardware and DOS 2.0+. However, as we're using INT 13h to do disk IO, it's left to the BIOS implementation of each machine to not be broken and behave as expected. This means that success is not guaranteed as the BIOS might have bugs and do funny things like not report the drives correctly. Work is in progress to add a consensus based mechanism to decide which drives are present using multiple sources of information.
 
 ## How to build
 
