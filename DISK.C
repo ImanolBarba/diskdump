@@ -100,11 +100,11 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
     MOV al, ch
     ADD al, 1
     MOV si, ld
-    MOV [si], ax   // num_cyl
     ADD dh, 1
-    MOV [si+2], dh // num_heads
-    MOV [si+3], cl // sect_per_track
-    MOV [si+4], bl // drive_type
+    MOV BYTE [si+1], dh // num_heads
+    MOV WORD [si+2], ax   // num_cyl
+    MOV BYTE [si+4], cl // sect_per_track
+    MOV BYTE [si+5], bl // drive_type
     MOV al, [es:di+3] 
     LEA si, bytes_per_sector_id
     MOV BYTE [si], al
@@ -127,9 +127,13 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
       break;
       default:
 	//printf("Unknown sector size %d for drive %#.02X\n",bytes_per_sector_id, drive_num);
-	return 1;
+	ld->sector_size = 0;
       break;
     }
+    if(!ld->sector_size) {
+      return 1;
+    }
+
     ld->num_sectors = ld->num_heads * ld->num_cylinders * ld->sectors_per_track;
     ld->current_sector = 0;
   }
@@ -140,7 +144,7 @@ int reset_floppy(legacy_descriptor* ld) {
   uint8_t status;
   asm {
     MOV si, ld
-    MOV dl, BYTE [si+5] // drive_num
+    MOV dl, BYTE [si] // drive_num
     XOR ah, ah
     INT 13h
     LEA si, status
@@ -208,7 +212,7 @@ ssize_t write_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint
   //printf("Writing %d (%ld/%ld) sectors from %04X:%04X\n", sectors_to_write, ld->current_sector, ld->num_sectors, FP_SEG(buf), FP_OFF(buf));
   asm {
     MOV si, ld
-    MOV dl, BYTE [si+5] // drive_num
+    MOV dl, BYTE [si] // drive_num
     MOV al, sectors_to_write
     MOV ch, cyl
     MOV cl, sect
@@ -244,7 +248,7 @@ ssize_t read_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8
   //printf("Reading %d (%ld/%ld) sectors into %04X:%04X\n", sectors_to_read, ld->current_sector, ld->num_sectors, FP_SEG(buf), FP_OFF(buf));
   asm {
     MOV si, ld
-    MOV dl, BYTE [si+5] // drive_num
+    MOV dl, BYTE [si] // drive_num
     MOV al, sectors_to_read
     MOV ch, cyl
     MOV cl, sect

@@ -30,12 +30,18 @@ ssize_t stdout_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
 
 int stdout_medium_ready(medium_data md) {
   md = md;
-  return 1;
+  return MEDIUM_READY;
+}
+
+void stdout_medium_done(medium_data md, char* hash) {
+  md = md;
+  hash = hash;
 }
 
 void create_stdout_medium(Medium* m, Digest* digest) {
   m->send = &stdout_medium_send;
   m->ready = &stdout_medium_ready;
   m->data = NULL;
+  m->done = &stdout_medium_done;
   m->digest = digest;
 }

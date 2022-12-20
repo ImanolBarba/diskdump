@@ -52,11 +52,11 @@
 typedef uint8_t FLOPPY_TYPE;
 
 typedef struct legacy_descriptor {
-  uint16_t num_cylinders;
+  uint8_t drive_num;
   uint8_t num_heads; // sides
+  uint16_t num_cylinders;
   uint8_t sectors_per_track;
   FLOPPY_TYPE floppy_type;
-  uint8_t drive_num;
   uint sector_size;
   ulongint current_sector;
   ulongint num_sectors;

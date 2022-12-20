@@ -31,6 +31,7 @@
 
 #define BAR_WIDTH 70
 #define MAX_LEN_UINT32_STR 10
+#define MAX_RETRIES 3
 
 void list_disks();
 int dump_floppy_drive(legacy_descriptor* ld, Medium* m);

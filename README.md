@@ -6,7 +6,7 @@ Transfer mediums:
 - Hexdump format printed to stdout
 - Split to files
 - Write to floppies
-- ZModem transfer [NOT IMPLEMENTED YET]
+- Serial transfer
 - TCP transfer (to be used with netcat or whatever) [NOT IMPLEMENTED YET]
 
 Can also calculate a hash of the disk while copying. This does slow down the transfer significantly however, since the implementation is done in C without optimisations or fancy intruction sets being used.

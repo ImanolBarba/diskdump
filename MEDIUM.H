@@ -25,14 +25,21 @@
 #include "digest.h"
 #include <stdio.h>
 
+#define MEDIUM_NOT_READY 0
+#define MEDIUM_READY 1
+#define MEDIUM_RETRY 2
+
+
 typedef void* medium_data;
 typedef ssize_t (*medium_send)(uint8_t far*, ulongint, medium_data);
 typedef int (*medium_ready)(medium_data);
+typedef void (*medium_done)(medium_data, char*);
 
 typedef struct Medium {
   medium_send send;
   medium_ready ready;
   medium_data data;
+  medium_done done;
   Digest* digest;
 } Medium;
 

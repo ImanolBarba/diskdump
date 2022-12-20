@@ -58,7 +58,12 @@ ssize_t hex_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
 
 int hex_medium_ready(medium_data md) {
   md = md;
-  return 1;
+  return MEDIUM_READY;
+}
+
+void hex_medium_done(medium_data md, char* hash) {
+  md = md;
+  hash = hash;
 }
 
 void create_hex_medium(Medium* m, hex_medium_data* hmd, Digest* digest) {
@@ -67,5 +72,6 @@ void create_hex_medium(Medium* m, hex_medium_data* hmd, Digest* digest) {
   m->send = &hex_medium_send;
   m->ready = &hex_medium_ready;
   m->data = (void*)hmd;
+  m->done = &hex_medium_done;
   m->digest = digest;
 }

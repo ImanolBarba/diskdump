@@ -25,6 +25,7 @@
 #include "hex.h"
 #include "stdout.h"
 #include "floppy.h"
+#include "serial.h"
 #include "md5.h"
 #include "sha1.h"
 #include "sha256.h"
@@ -46,7 +47,7 @@ typedef enum medium_type {
   MEDIUM_STDOUT = 3,
   MEDIUM_NULL = 4,
   MEDIUM_FLOPPY = 5,
-  MEDIUM_ZMODEM = 6,
+  MEDIUM_SERIAL = 6,
   MEDIUM_TCP = 7
 } medium_type;
 
@@ -62,7 +63,6 @@ typedef struct args {
   ulongint file_size;
   uint8_t floppy;
   const char* floppy_num;
-  uint8_t zmodem;
   const char* hostname;
   uint16_t port;
   uint8_t md5;
@@ -72,6 +72,8 @@ typedef struct args {
   uint8_t stdout_output;
   uint8_t null_output;
   const char* drive_num;
+  const char* serial_port;
+  ulongint serial_speed;
 } args;
 
 void print_help(const char* exename) {
@@ -81,7 +83,7 @@ void print_help(const char* exename) {
   }
   if(last_backslash) {
     last_backslash++;
-  } 
+  }
   printf("%s ACTION MEDIUM [HASH] [OTHER]\n", exename + last_backslash);
   printf("\n");
   printf("ACTIONS:\n");
@@ -96,7 +98,8 @@ void print_help(const char* exename) {
   printf("\t\t`/D D:\\DUMP /Z 1000000`\n");
   printf("\t/F DRIVE_NUM Dump to floppy disks in the specified drive\n");
   printf("\t\t/F 0x00 -- Dump to first floppy unit (A:\\)\n");
-  printf("\t/ZM Dump through serial port using ZMODEM protocol\n");
+  printf("\t/S PORT /SS SPEED Dump through serial port\n");
+  printf("\t\t/S COM1 /SS 115200\n");
   printf("\t/H HOSTNAME Dump to TCP server. Netcat should work\n");
   printf("\t/P PORT TCP port to connect to. Default port is 5700\n");
   printf("\t\t`/H 1.2.3.4 /P 1234` -- Dump to TCP server on 1.2.3.4:1234\n");
@@ -111,7 +114,7 @@ void print_help(const char* exename) {
   printf("\n");
   printf("OTHER FLAGS:\n");
   printf("\t/B Display progress bar\n");
-  printf("\t/Q Quiet. Don't print anything to stdout. Necessary with /O\n");  
+  printf("\t/Q Quiet. Don't print anything to stdout. Necessary with /O\n");
 }
 
 int parse_args(int argc, char** argv, args* cmd) {
@@ -132,7 +135,7 @@ int parse_args(int argc, char** argv, args* cmd) {
       cmd->list = 1;
     } else if(!strcmp(argv[i], "/N")) {
       if(md != MODE_UNKNOWN) {
-        printf("More than one mode specified\n");
+	      printf("More than one mode specified\n");
         return 1;
       }
       md = MODE_DUMP;
@@ -162,14 +165,36 @@ int parse_args(int argc, char** argv, args* cmd) {
       }
       m = MEDIUM_FLOPPY;
       cmd->floppy = 1;
-      cmd->floppy_num = argv[++i];  
-    } else if(!strcmp(argv[i], "/ZM")) {
+      cmd->floppy_num = argv[++i];
+    } else if(!strcmp(argv[i], "/S")) {
       if(m != MEDIUM_UNKNOWN) {
         printf("More than one medium specified\n");
         return 1;
       }
-      m = MEDIUM_ZMODEM;
-      cmd->zmodem = 1;
+      m = MEDIUM_SERIAL;
+      cmd->serial_port = argv[++i];
+      if(strcmp(cmd->serial_port, COM1) != 0 && strcmp(cmd->serial_port, COM2) != 0) {
+        printf("Invalid serial port specified: %s\n", cmd->serial_port);
+        return 1;    
+      }
+    } else if(!strcmp(argv[i], "/SS")) {
+      status = parse_num(&num, argv[++i]);
+      if(status) {
+        printf("Invalid serial speed specified: %s\n", argv[i]);
+        return 1;
+      }
+      switch(num) {
+        case 1200:
+        case 2400:
+        case 4800:
+        case 9600:
+        case 115200:
+          cmd->serial_speed = num;
+          break;
+        default:
+          printf("Unsupported speed requested: %ul\n", num);
+          return 1;
+      }
     } else if(!strcmp(argv[i], "/H")) {
       if(m != MEDIUM_UNKNOWN) {
         printf("More than one medium specified\n");
@@ -241,7 +266,7 @@ int parse_args(int argc, char** argv, args* cmd) {
       }
       if(m == MEDIUM_HEX || m == MEDIUM_STDOUT) {
         continue;
-      }  
+      }
       progress = 1;
     } else if(!strcmp(argv[i], "/Q")) {
       cmd->md5 = 0;
@@ -275,7 +300,7 @@ int parse_num(long* num, const char* num_str) {
 // -- MEDIUMS --
 // --file     [DONE] /D ARG /Z ARG
 // --floppy   [DONE] /F ARG
-// --zmodem          /ZM
+// --serial          /S ARG /SS ARG
 // --tcp             /H ARG /P ARG
 // --hex      [DONE] /X
 // --stdout   [DONE] /O
@@ -291,7 +316,7 @@ int parse_num(long* num, const char* num_str) {
 int main(int argc, char **argv) {
   args cmd;
   int status;
-  
+
   // Disk data
   long drive_num;
   legacy_descriptor ld;
@@ -303,11 +328,12 @@ int main(int argc, char **argv) {
   hex_medium_data hmd;
   floppy_medium_data fmd2;
   long floppy_num; // for floppy medium
-  
+  serial_medium_data smd;
+
   // Digest data
   Digest _hash;
   Digest* hash = &_hash;
-  
+
   char hash_str_md5[MD5_STR_LENGTH+1];
   md5_digest_data mdd;
 
@@ -317,7 +343,7 @@ int main(int argc, char **argv) {
   char hash_str_sha256[SHA256_STR_LENGTH+1];
   sha256_digest_data sdd2;
 
-  // Begin 
+  // Begin
   memset(&cmd, 0x00, sizeof(args));
   status = parse_args(argc, argv, &cmd);
   if(status) {
@@ -325,7 +351,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   if(cmd.list) {
-    // We're listing drives  
+    // We're listing drives
     list_disks();
   } else if(cmd.drive_num) {
     // We're dumping a disk
@@ -333,6 +359,24 @@ int main(int argc, char **argv) {
     if(status) {
       printf("Invalid drive number specified: %s\n", cmd.drive_num);
     }
+  
+    // Populate drive data first (needed for some mediums)  
+    if(drive_num & HARD_DISK_FLAG) {
+      dd.drive_num = (uint8_t)drive_num;
+      status = get_drive_data_disk(&dd);
+      if(status) {
+        printf("Invalid drive number specified: %02X\n", (uint8_t)drive_num);
+        return 1;
+      }
+    } else {
+      ld.drive_num = (uint8_t)drive_num;
+      status = get_drive_data_floppy(&ld);
+      if(status) {
+        printf("Invalid drive number specified: %02X\n", (uint8_t)drive_num);
+        return 1;
+      }
+    }
+
     if(cmd.md5) {
       create_md5_digest(hash, &mdd);
     } else if(cmd.sha1) {
@@ -366,29 +410,30 @@ int main(int argc, char **argv) {
         return 1;
       }
       create_floppy_medium(&m, &fmd2, hash);
+    } else if(cmd.serial_port) {
+      if(drive_num & HARD_DISK_FLAG) {
+        status = create_serial_medium(cmd.serial_port, cmd.serial_speed, (void*)&dd, &m, &smd, hash);
+      } else {
+        status = create_serial_medium(cmd.serial_port, cmd.serial_speed, (void*)&ld, &m, &smd, hash);
+      }
+      if(status != 0) {
+        printf("Unable to initialise serial communication with peer\n");
+        if(smd.port != NULL) {
+          port_close(smd.port);
+        }
+        return 1;
+      }
     } else {
       printf("Medium not selected\n");
       return 1;
     }
     if(drive_num & HARD_DISK_FLAG) {
-      dd.drive_num = (uint8_t)drive_num;
-      status = get_drive_data_disk(&dd);
-      if(status) {
-        printf("Invalid drive number specified: %02X\n", (uint8_t)drive_num);
-        return 1;
-      }
       if(!quiet) {
         printf("Dumping data from:\n\n");
         print_drive_data_disk(&dd);
       }
       status = dump_hard_drive(&dd, &m);
     } else {
-      ld.drive_num = (uint8_t)drive_num;
-      status = get_drive_data_floppy(&ld);
-      if(status) {
-        printf("Invalid drive number specified: %02X\n", (uint8_t)drive_num);
-        return 1;
-      }
       if(!quiet) {
         printf("Dumping data from:\n\n");
         print_drive_data_floppy(&ld);
@@ -397,6 +442,12 @@ int main(int argc, char **argv) {
     }
     if(status) {
       printf("\n\nDump returned: %d\n", status);
+      
+      // Cleanup
+      if(smd.port != NULL) {
+        port_close(smd.port);
+      }
+      
       return 1;
     }
     if(!quiet) {
@@ -404,13 +455,18 @@ int main(int argc, char **argv) {
     }
     if(cmd.md5) {
       get_md5_hash_string(&(mdd.hash_state), hash_str_md5);
+      m.done(m.data, hash_str_md5);
       printf("MD5: %s\n", hash_str_md5);
     } else if(cmd.sha1) {
       get_sha1_hash_string(&(sdd.hash_state), hash_str_sha1);
+      m.done(m.data, hash_str_sha1);
       printf("SHA1: %s\n", hash_str_sha1);
     } else if(cmd.sha256) {
       get_sha256_hash_string(&(sdd2.hash_state), hash_str_sha256);
+      m.done(m.data, hash_str_sha256);
       printf("SHA256: %s\n", hash_str_sha256);
+    } else {
+      m.done(m.data, NULL);
     }
   } else {
     // I don't know WTF we're doing so, let's print help

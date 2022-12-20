@@ -75,15 +75,21 @@ int floppy_medium_ready(medium_data md) {
   }while(status && (++retries != MAX_RETRIES));
   if(status) {
     printf("Reached maximum retries. Giving up.\n");
-    return 0;
-  }  
-  return 1;
+    return MEDIUM_NOT_READY;
+  }
+  return MEDIUM_READY;
+}
+
+void floppy_medium_done(medium_data md, char* hash) {
+  md = md;
+  hash = hash;
 }
 
 int create_floppy_medium(Medium* m, floppy_medium_data* fmd, Digest* digest) {
   m->send = &floppy_medium_send;
   m->ready = &floppy_medium_ready;
   m->data = (void*)fmd;
+  m->done = &floppy_medium_done;
   m->digest = digest;
   return m->ready(m->data);
 }

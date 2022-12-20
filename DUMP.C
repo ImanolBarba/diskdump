@@ -20,6 +20,7 @@
 
 #include "dump.h"
 
+
 extern uint8_t progress;
 size_t num_equals = 0;
 
@@ -101,6 +102,8 @@ int dump_floppy_drive(legacy_descriptor* ld, Medium* m) {
   uint16_t segment, largest_block;
   ssize_t bytes_read, bytes_sent;
   uint8_t far *buf;
+  uint retries = 0;
+
   uint16_t status = alloc_segment(&segment, &largest_block);
   if(status) {
     printf("Failed to allocate segment. Error: %04X.\nLargest block: %04X\n", status, largest_block);
@@ -123,22 +126,32 @@ int dump_floppy_drive(legacy_descriptor* ld, Medium* m) {
       free_segment(segment);
       return -1;
     }
-    if(m->digest) {
-      m->digest->digest(buf, (ulongint)bytes_read, m->digest->data);
-    }
+    retry:
     bytes_sent = m->send(buf, bytes_read, m->data);
     if(bytes_read != bytes_sent) {
       printf("Came short when transferring to medium :(\n");
       free_segment(segment);
       return -1;
     }
-    if(progress) {
-      print_progress(ld->current_sector, ld->num_sectors);
-    }
-    if(!m->ready(m->data)) {
+    status = m->ready(m->data);
+    if(status == MEDIUM_RETRY) {
+      if(++retries == MAX_RETRIES) {
+        printf("Maximum retries reached for retransmission on medium\n");
+        free_segment(segment);
+        return -1;
+      }
+      goto retry;
+    } else if(status != MEDIUM_READY) {
       printf("Medium not ready\n");
       free_segment(segment);
       return -1;
+    }
+
+    if(progress) {
+      print_progress(ld->current_sector, ld->num_sectors);
+    }
+    if(m->digest) {
+      m->digest->digest(buf, (ulongint)bytes_read, m->digest->data);
     }
   }
   if(m->digest) {
@@ -153,6 +166,7 @@ int dump_hard_drive(drive_descriptor* dd, Medium* m) {
   ssize_t bytes_read, bytes_sent;
   uint8_t far *buf;
   uint16_t status;
+  uint retries = 0;
   legacy_descriptor ld;
 
   if(!check_extensions_present(dd->drive_num)) {
@@ -177,7 +191,7 @@ int dump_hard_drive(drive_descriptor* dd, Medium* m) {
   if(progress) {
     print_progress(dd->current_sector, dd->num_sectors);
   }
-  // We will only request the maximum sectors of LBA that can be read 
+  // We will only request the maximum sectors of LBA that can be read
   // at once tops, if we go for maximum 128 we end up doing 2 transfers,
   // one for 127 sectors and 1 for 1 sector, which is inefficient.
   while((bytes_read = read_drive_lba(dd, buf, MAX_SECTORS_LBA)) != 0) {
@@ -186,22 +200,31 @@ int dump_hard_drive(drive_descriptor* dd, Medium* m) {
       free_segment(segment);
       return -1;
     }
-    if(m->digest) {
-      m->digest->digest(buf, (ulongint)bytes_read, m->digest->data);
-    }
+    retry:
     bytes_sent = m->send(buf, bytes_read, m->data);
     if(bytes_read != bytes_sent) {
       printf("Came short when transferring to medium :(\n");
       free_segment(segment);
       return -1;
     }
-    if(progress) {
-      print_progress(dd->current_sector, dd->num_sectors);
-    }
-    if(!m->ready(m->data)) {
+    status = m->ready(m->data);
+    if(status == MEDIUM_RETRY) {
+      if(++retries == MAX_RETRIES) {
+        printf("Maximum retries reached for retransmission on medium\n");
+        free_segment(segment);
+        return -1;
+      }
+      goto retry;
+    } else if(status != MEDIUM_READY) {
       printf("Medium not ready\n");
       free_segment(segment);
       return -1;
+    }
+    if(progress) {
+      print_progress(dd->current_sector, dd->num_sectors);
+    }
+    if(m->digest) {
+      m->digest->digest(buf, (ulongint)bytes_read, m->digest->data);
     }
   }
   if(m->digest) {

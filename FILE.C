@@ -231,7 +231,12 @@ ssize_t file_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
 
 int file_medium_ready(medium_data md) {
   md = md;
-  return 1;
+  return MEDIUM_READY;
+}
+
+void file_medium_done(medium_data md, char* hash) {
+  md = md;
+  hash = hash;
 }
 
 int create_file_medium(const char* target_directory, ulongint file_size, Medium* m, file_medium_data* fmd, Digest* digest) {
@@ -246,7 +251,7 @@ int create_file_medium(const char* target_directory, ulongint file_size, Medium*
   file_handle = file_creat(path);
   if(file_handle == 0) {
     printf("Unable to create a file in the specified path: %s. Check if the path exists and the media is not write protected\n", target_directory);
-    return -1; 
+    return -1;
   }
   file_close(file_handle);
   fmd->fd = 0;
@@ -256,6 +261,7 @@ int create_file_medium(const char* target_directory, ulongint file_size, Medium*
   m->send = &file_medium_send;
   m->ready = &file_medium_ready;
   m->data = (void*)fmd;
+  m->done = &file_medium_done;
   m->digest = digest;
   return 0;
 }

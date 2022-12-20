@@ -1,7 +1,7 @@
 /***************************************************************************
- *   NULL.C  --  This file is part of diskdump.                            *
+ *   CRC.H  --  This file is part of diskdump.                             *
  *                                                                         *
- *   Copyright (C) 2021 Imanol-Mikel Barba Sabariego                       *
+ *   Copyright (C) 2022 Imanol-Mikel Barba Sabariego                       *
  *                                                                         *
  *   diskdump is free software: you can redistribute it and/or modify      *
  *   it under the terms of the GNU General Public License as published     *
@@ -18,28 +18,13 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "null.h"
+#ifndef _CRC_H
+#define _CRC_H
 
-ssize_t null_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
-  buf = buf;
-  md = md;
-  return buf_len;
-}
+#include <stdio.h>
+#include <dos.h>
+#include "types.h"
 
-int null_medium_ready(medium_data md) {
-  md = md;
-  return MEDIUM_READY;
-}
+uint32_t calc_crc(uint8_t far* data, ulongint data_len);
 
-void null_medium_done(medium_data md, char* hash) {
-  md = md;
-  hash = hash;
-}
-
-void create_null_medium(Medium* m, Digest* digest) {
-  m->send = &null_medium_send;
-  m->ready = &null_medium_ready;
-  m->data = NULL;
-  m->done = &null_medium_done;
-  m->digest = digest;
-}
+#endif
