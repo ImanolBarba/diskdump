@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 
+// TODO: Get num cols from current video mode
 #define BAR_WIDTH 70
 #define MAX_LEN_UINT32_STR 10
 #define MAX_RETRIES 3

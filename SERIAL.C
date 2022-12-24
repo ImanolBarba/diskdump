@@ -25,11 +25,15 @@
 // very interesting read!
 
 PORT *com = NULL;
-void (interrupt far* old_break_handler)();
-void (interrupt far* old_user_tick_handler)();
+void (interrupt far* old_break_handler)() = NULL;
+void (interrupt far* old_user_tick_handler)() = NULL;
 
 uint8_t counting_enabled = 0;
 uint8_t ticks = 0;
+
+// Everything blocking that touches serial comms needs to check this
+// flag to avoid lockouts
+uint8_t ctrlbreak_called = 0;
 
 void interrupt far user_tick_handler() {
   if(counting_enabled) {
@@ -38,13 +42,15 @@ void interrupt far user_tick_handler() {
 }
 
 void interrupt far break_handler() {
-  // Restore original interrupt handlers. Next Ctrl-Break will terminate the
-  // program correctly
+  // Restore original interrupt handler and mark program for termination
   port_close(com);
-  _dos_setvect(USER_TICK_VECTOR, old_user_tick_handler);
+  ctrlbreak_called = 1;
 }
 
 void flush_buffer(buffer* b) {
+  if(ctrlbreak_called) {
+    return;
+  }
   while(b->write_pos != b->read_pos) {
     // spin
   }
@@ -117,11 +123,13 @@ int port_open(uint address, uint interrupt_number) {
   com->uart_base = address;
   com->irq_mask = (uint8_t) 1 << (interrupt_number % 8);
   com->interrupt_number = interrupt_number;
-  com->old_vector = _dos_getvect(interrupt_number);
 
+  com->old_vector = _dos_getvect(interrupt_number);
   _dos_setvect(interrupt_number, serial_ISR);
   old_break_handler = _dos_getvect(BREAK_VECTOR);
   _dos_setvect(BREAK_VECTOR, break_handler);
+  old_user_tick_handler = _dos_getvect(USER_TICK_VECTOR);
+  _dos_setvect(USER_TICK_VECTOR, user_tick_handler);
 
   // IRQ_CONTROLLER + 1 is the Interrupt Mask Register
   current_mask = (uint8_t) inp(IRQ_CONTROLLER + 1);
@@ -133,6 +141,11 @@ int port_open(uint address, uint interrupt_number) {
 void port_close(PORT *p) {
   uint8_t current_mask;
 
+  if(com == NULL) {
+    // Already closed
+    return;
+  }
+
   // Disable all serial interrupts
   outp(p->uart_base + IER, 0);
   current_mask = (uint8_t) inp(IRQ_CONTROLLER + 1);
@@ -141,9 +154,13 @@ void port_close(PORT *p) {
   // Restore old ISR for serial port
   _dos_setvect(p->interrupt_number, p->old_vector);
   // Restore old user tick handler
-  _dos_setvect(USER_TICK_VECTOR, old_user_tick_handler);
+  if(old_user_tick_handler != NULL) {
+    _dos_setvect(USER_TICK_VECTOR, old_user_tick_handler);
+  }
   // Restore old break handler
-  _dos_setvect(BREAK_VECTOR, old_break_handler);
+  if(old_break_handler != NULL) {
+    _dos_setvect(BREAK_VECTOR, old_break_handler);
+  }
   // Reset modem control lines
   outp(p->uart_base + MCR, 0);
   free(p);
@@ -224,6 +241,10 @@ int check_ack(serial_medium_data* smd) {
   uint8_t status = 0;
   uint8_t ack;
 
+  if(ctrlbreak_called) {
+    return 0;
+  }
+
   counting_enabled = 1;
   do {
     status = port_recv(smd->port, &ack);
@@ -262,6 +283,10 @@ int write_buffer_serial(serial_medium_data* smd, uint8_t far *buf, ulongint buf_
   for(current_pos = 0; current_pos < buf_len; current_pos++) {
     counting_enabled = 1;
     do {
+      if(ctrlbreak_called) {
+        return 1;
+      }
+      
       status = port_send(smd->port, *(buf + current_pos));
     } while(status && ticks < (TICKS_PER_SEC * MAX_RETRIES_SERIAL));
 
@@ -393,9 +418,6 @@ int create_serial_medium(const char* port, ulongint speed, void* descriptor, Med
     serial_interrupt = COM2_INTERRUPT;
     port_number = COM2_ADDR;
   }
-
-  old_user_tick_handler = _dos_getvect(USER_TICK_VECTOR);
-  _dos_setvect(USER_TICK_VECTOR, user_tick_handler);
 
   status = port_open(port_number, serial_interrupt);
   if(status != 0) {

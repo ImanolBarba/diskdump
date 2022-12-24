@@ -34,8 +34,6 @@ void gotoxy(uint8_t x, uint8_t y) {
     POP es
     MOV dl, x
     MOV dh, y
-    DEC dl 
-    DEC dh
     MOV ah, 2
     INT 10h   
   }
@@ -56,7 +54,7 @@ uint8_t wherey() {
     MOV BYTE PTR [si], dh    
   }
   
-  return y+1;  
+  return y;  
 }
 
 // Printing progress will inevitably slow things down a bit if the
@@ -77,16 +75,16 @@ void print_progress(ulongint current, ulongint total) {
     }
     printf(" out of %lu sectors\n", total);
     // Draw bar if first time
-    printf("%.02f%c   [                                                                      ]", 100*percent, '%');
-    gotoxy(1, wherey()-1);
+    printf("%.02f%%   [                                                                      ]", 100*percent);
+    gotoxy(0, wherey()-1);
   } else {
-    gotoxy(1, wherey()-1);
+    gotoxy(0, wherey()-1);
     printf("%lu", current);
-    gotoxy(1, wherey()+1);
-    printf("%.02f\%", 100*percent);
+    gotoxy(0, wherey()+1);
+    printf("%.02f%%", 100*percent);
     if(num_equals_new != num_equals) {
       // Only write to the screen if we need to update
-      gotoxy(10 + num_equals, wherey());
+      gotoxy(9 + num_equals, wherey());
       for(i = num_equals; i < num_equals_new; ++i) {
         printf("=");
       }
