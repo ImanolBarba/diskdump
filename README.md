@@ -26,20 +26,13 @@ This project is built using Borland Turbo C (I'm currently using 3.0). The Makef
 
 To build the regular build:
 ```
-C:\SOURCE\DISKDUMP\> make
+C:\SOURCE\DISKDUMP\> wmake
 ```
 
 To build the debug build:
 ```
-C:\SOURCE\DISKDUMP\> make /DDEBUG
+C:\SOURCE\DISKDUMP\> make DEBUG=1
 ```
-
-To build the "fast" build:
-```
-C:\SOURCE\DISKDUMP\> make /DSPEED
-```
-
-Note: I have no idea if this is in any measurable way fast, it's just a compiler setting from TC. To me it did seem to do nothing except increase the file size a tiny bit so perhaps it's not noticeable for this program.
 
 ## Usage
 ```
@@ -57,7 +50,8 @@ MEDIUMS:
 		`/D D:\DUMP /Z 1000000`
 	/F DRIVE_NUM Dump to floppy disks in the specified drive
 		/F 0x00 -- Dump to first floppy unit (A:\)
-	/ZM Dump through serial port using ZMODEM protocol
+	/S PORT Dump through the specified serial port
+	/SP SPEED speed in bps to use while transferring through serial
 	/H HOSTNAME Dump to TCP server. Netcat should work
 	/P PORT TCP port to connect to. Default port is 5700
 		`/H 1.2.3.4 /P 1234` -- Dump to TCP server on 1.2.3.4:1234
