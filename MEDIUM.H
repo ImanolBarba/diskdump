@@ -23,6 +23,7 @@
 
 #include "types.h"
 #include "digest.h"
+
 #include <stdio.h>
 
 #define MEDIUM_NOT_READY 0

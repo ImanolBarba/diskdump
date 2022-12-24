@@ -24,6 +24,41 @@
 extern uint8_t progress;
 size_t num_equals = 0;
 
+// Missing functions in OW
+void gotoxy(uint8_t x, uint8_t y) {
+  _asm {
+    PUSH es
+    MOV ax, 40h
+    MOV es, ax
+    MOV bh, BYTE PTR es:[62h]
+    POP es
+    MOV dl, x
+    MOV dh, y
+    DEC dl 
+    DEC dh
+    MOV ah, 2
+    INT 10h   
+  }
+}
+
+uint8_t wherey() {
+  uint8_t y = 0;
+  
+  _asm {
+    PUSH es
+    MOV ax, 40h
+    MOV es, ax
+    MOV bh, BYTE PTR es:[62h]
+    POP es
+    MOV ah, 3
+    INT 10h
+    LEA si, y
+    MOV BYTE PTR [si], dh    
+  }
+  
+  return y+1;  
+}
+
 // Printing progress will inevitably slow things down a bit if the
 // delay introduced by the digest function and IO is too small
 void print_progress(ulongint current, ulongint total) {
@@ -42,7 +77,7 @@ void print_progress(ulongint current, ulongint total) {
     }
     printf(" out of %lu sectors\n", total);
     // Draw bar if first time
-    printf("%.02f\%   [                                                                      ]", 100*percent);
+    printf("%.02f%c   [                                                                      ]", 100*percent, '%');
     gotoxy(1, wherey()-1);
   } else {
     gotoxy(1, wherey()-1);

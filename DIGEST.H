@@ -22,6 +22,7 @@
 #define _DIGEST_H
 
 #include "types.h"
+
 #include <stdio.h>
 
 typedef void* digest_data;

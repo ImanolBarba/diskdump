@@ -1,20 +1,29 @@
 # This is a Borland Makefile, not GNU
 
-CC=C:\TC\BIN\TCC.EXE
-        
-CFILES=DISKDUMP.C DISK.C DUMP.C FILE.C HEX.C MD5.C MEM.C NULL.C \
-                         SHA1.C SHA256.C STDOUT.C FLOPPY.C CRC.C \
-                         SERIAL.C
+CC=C:\WATCOM19\BINW\WCC.EXE
+LD=C:\WATCOM19\BINW\WLINK.EXE
 
-DISKDUMP.EXE: clean $(CFILES)
-        !if $d(DEBUG)
-                $(CC) -v -y $(CFILES)
-        !elif $d(SPEED)
-                $(CC) -G $(CFILES)      
-        !else   
-                $(CC) $(CFILES)
-        !endif
+CFLAGS = -0
+  
+OBJS = crc.obj disk.obj diskdump.obj dump.obj file.obj floppy.obj &
+       hex.obj md5.obj mem.obj null.obj serial.obj sha1.obj &
+			 sha256.obj stdout.obj
 
-clean:
-        del *.obj > NUL
-        del *.exe > NUL       
+DEBUG_ENABLED = $(DEBUG)
+
+!ifeq DEBUG 1  
+CFLAGS += -d2
+WLFLAGS = debug all option symfile
+!endif
+
+all: diskdump.exe
+	
+.c.obj:
+	$(CC) $(CFLAGS) $< 
+
+diskdump.exe: $(OBJS) 
+	$(LD) $(WLFLAGS) file *.obj name $@ 
+				
+clean: .SYMBOLIC
+  del *.obj > NUL
+  del *.exe > NUL       

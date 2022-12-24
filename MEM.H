@@ -21,9 +21,10 @@
 #ifndef _MEM_H
 #define _MEM_h
 
+#include "types.h"
+
 #include <dos.h>
 #include <math.h>
-#include "types.h"
 
 #define SEGMENT_SIZE 65536
 

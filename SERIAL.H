@@ -21,11 +21,15 @@
 #ifndef _SERIAL_H
 #define _SERIAL_H
 
-#include "medium.h"
+#include "crc.h"
 #include "digest.h"
+#include "disk.h"
+#include "medium.h"
+
+#include <conio.h>
+#include <dos.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <dos.h>
 
 #define ACK 0x55
 #define NACK 0xAA
@@ -116,4 +120,3 @@ void port_close(PORT *p);
 int create_serial_medium(const char* port, ulongint speed, void* descriptor, Medium* m, serial_medium_data* fmd, Digest* digest);
 
 #endif
-

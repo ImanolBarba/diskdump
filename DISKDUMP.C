@@ -18,17 +18,19 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <stdio.h>
 #include "disk.h"
 #include "dump.h"
-#include "file.h"
 #include "hex.h"
-#include "stdout.h"
+#include "file.h"
 #include "floppy.h"
-#include "serial.h"
 #include "md5.h"
+#include "null.h"
+#include "serial.h"
 #include "sha1.h"
 #include "sha256.h"
+#include "stdout.h"
+
+#include <stdio.h>
 
 uint8_t quiet = 0;
 uint8_t progress = 0;
@@ -117,6 +119,16 @@ void print_help(const char* exename) {
   printf("\t/Q Quiet. Don't print anything to stdout. Necessary with /O\n");
 }
 
+int parse_num(long* num, const char* num_str) {
+  char* endptr;
+  long num_ret = strtoul(num_str, &endptr, 0);
+  if(num == 0 && endptr != (num_str + strlen(num_str))) {
+    return 1;
+  }
+  *num = num_ret;
+  return 0;
+}
+
 int parse_args(int argc, char** argv, args* cmd) {
   int status;
   int i;
@@ -175,7 +187,7 @@ int parse_args(int argc, char** argv, args* cmd) {
       cmd->serial_port = argv[++i];
       if(strcmp(cmd->serial_port, COM1) != 0 && strcmp(cmd->serial_port, COM2) != 0) {
         printf("Invalid serial port specified: %s\n", cmd->serial_port);
-        return 1;    
+        return 1;
       }
     } else if(!strcmp(argv[i], "/SS")) {
       status = parse_num(&num, argv[++i]);
@@ -283,16 +295,6 @@ int parse_args(int argc, char** argv, args* cmd) {
   return 0;
 }
 
-int parse_num(long* num, const char* num_str) {
-  char* endptr;
-  long num_ret = strtoul(num_str, &endptr, 0);
-  if(num == 0 && endptr != (num_str + strlen(num_str))) {
-    return 1;
-  }
-  *num = num_ret;
-  return 0;
-}
-
 // -- ACTIONS --
 // --list     [DONE] /L
 // --help     [DONE] /?
@@ -344,6 +346,13 @@ int main(int argc, char **argv) {
   sha256_digest_data sdd2;
 
   // Begin
+  
+  // gotoxy/where functions require unbuffered stdout, I am not aware
+  // if Borland somehow handled this transparently or stdout was 
+  // already unbuffered in Borland, but the idea is, we need this 
+  // in OW or the progress bar printing won't work properly
+  setbuf(stdout, NULL);
+  
   memset(&cmd, 0x00, sizeof(args));
   status = parse_args(argc, argv, &cmd);
   if(status) {
@@ -359,8 +368,8 @@ int main(int argc, char **argv) {
     if(status) {
       printf("Invalid drive number specified: %s\n", cmd.drive_num);
     }
-  
-    // Populate drive data first (needed for some mediums)  
+
+    // Populate drive data first (needed for some mediums)
     if(drive_num & HARD_DISK_FLAG) {
       dd.drive_num = (uint8_t)drive_num;
       status = get_drive_data_disk(&dd);
@@ -442,12 +451,12 @@ int main(int argc, char **argv) {
     }
     if(status) {
       printf("\n\nDump returned: %d\n", status);
-      
+
       // Cleanup
       if(smd.port != NULL) {
         port_close(smd.port);
       }
-      
+
       return 1;
     }
     if(!quiet) {

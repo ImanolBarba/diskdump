@@ -21,6 +21,8 @@
 #ifndef _TYPES_H
 #define _TYPES_H
 
+#define _SSIZE_T_DEFINED_
+
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned long int uint32_t;

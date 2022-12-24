@@ -23,18 +23,22 @@
 uint8_t drive_params[DRIVE_PARAMS_SIZE];
 
 int check_extensions_present(uint8_t drive_num) {
-  asm {
+  uint8_t status = 0;
+
+  _asm {
     MOV dl, drive_num
     MOV bx, 55AAh
     MOV ah, 41h
     INT 13h
     JNC ext_present
+    JMP end
+    ext_present:
+    LEA si, status
+    MOV BYTE PTR [si], 1
+    end:
   }
 
-  return 0;
-
-  ext_present:
-  return 1;
+  return status;
 }
 
 int get_drive_data_disk(drive_descriptor* dd) {
@@ -46,17 +50,17 @@ int get_drive_data_disk(drive_descriptor* dd) {
   memset(dd, 0x00, sizeof(drive_descriptor));
   dd->drive_num = drive_num;
 
-  asm {
+  _asm {
     MOV dl, drive_num
     MOV ah, 48h
     PUSH ds
     MOV ds, dp_segment
     MOV si, dp_offset
-    MOV WORD [ds:si], 1Eh
+    MOV WORD PTR [ds:si], 1Eh
     INT 13h
     POP ds
     LEA si, status
-    MOV BYTE [si], ah
+    MOV BYTE PTR [si], ah
   };
   if(!status) {
     dd->num_cylinders = *((uint32_t*)(drive_params+4));
@@ -80,13 +84,13 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
   memset(ld, 0x00, sizeof(legacy_descriptor));
   ld->drive_num = drive_num;
 
-  asm {
+  _asm {
     MOV si, ld
     MOV dl, drive_num
     MOV ah, 08h
     INT 13h
     LEA si, status
-    MOV BYTE [si], ah
+    MOV BYTE PTR [si], ah
     TEST ah, ah
     JNZ end
     MOV ah, cl
@@ -101,16 +105,16 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
     ADD al, 1
     MOV si, ld
     ADD dh, 1
-    MOV BYTE [si+1], dh // num_heads
-    MOV WORD [si+2], ax   // num_cyl
-    MOV BYTE [si+4], cl // sect_per_track
-    MOV BYTE [si+5], bl // drive_type
-    MOV al, [es:di+3] 
+    MOV BYTE PTR [si+1], dh // num_heads
+    MOV WORD PTR [si+2], ax   // num_cyl
+    MOV BYTE PTR [si+4], cl // sect_per_track
+    MOV BYTE PTR [si+5], bl // drive_type
+    MOV al, [es:di+3]
     LEA si, bytes_per_sector_id
-    MOV BYTE [si], al
+    MOV BYTE PTR [si], al
+    end:
   };
 
-  end:
   if(!status) {
     switch(bytes_per_sector_id) {
       case BPS_128:
@@ -142,13 +146,13 @@ int get_drive_data_floppy(legacy_descriptor* ld) {
 
 int reset_floppy(legacy_descriptor* ld) {
   uint8_t status;
-  asm {
+  _asm {
     MOV si, ld
-    MOV dl, BYTE [si] // drive_num
+    MOV dl, BYTE PTR [si] // drive_num
     XOR ah, ah
     INT 13h
     LEA si, status
-    MOV BYTE [si], ah
+    MOV BYTE PTR [si], ah
   }
   return (int)status;
 }
@@ -210,9 +214,9 @@ ssize_t write_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint
   }
   //printf("c:%d h:%d s:%d\n",cyl, head, sect);
   //printf("Writing %d (%ld/%ld) sectors from %04X:%04X\n", sectors_to_write, ld->current_sector, ld->num_sectors, FP_SEG(buf), FP_OFF(buf));
-  asm {
+  _asm {
     MOV si, ld
-    MOV dl, BYTE [si] // drive_num
+    MOV dl, BYTE PTR [si] // drive_num
     MOV al, sectors_to_write
     MOV ch, cyl
     MOV cl, sect
@@ -224,9 +228,9 @@ ssize_t write_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint
     INT 13h
     POP es
     LEA si, status
-    MOV BYTE [si], ah
+    MOV BYTE PTR [si], ah
     LEA si, sectors_written
-    MOV BYTE [si], al
+    MOV BYTE PTR [si], al
   }
   if(status) {
     printf("Write sector CHS status: %d\n", status);
@@ -246,9 +250,9 @@ ssize_t read_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8
   }
   //printf("c:%d h:%d s:%d\n",cyl, head, sect);
   //printf("Reading %d (%ld/%ld) sectors into %04X:%04X\n", sectors_to_read, ld->current_sector, ld->num_sectors, FP_SEG(buf), FP_OFF(buf));
-  asm {
+  _asm {
     MOV si, ld
-    MOV dl, BYTE [si] // drive_num
+    MOV dl, BYTE PTR [si] // drive_num
     MOV al, sectors_to_read
     MOV ch, cyl
     MOV cl, sect
@@ -260,9 +264,9 @@ ssize_t read_sectors_chs(legacy_descriptor* ld, uint8_t cyl, uint8_t head, uint8
     INT 13h
     POP es
     LEA si, status
-    MOV BYTE [si], ah
+    MOV BYTE PTR [si], ah
     LEA si, sectors_read
-    MOV BYTE [si], al
+    MOV BYTE PTR [si], al
   }
   if(status) {
     if(status == 0x06) {
@@ -280,9 +284,9 @@ ssize_t read_sectors_lba(drive_descriptor* desc, DAP* dap) {
   uint16_t dap_segment = FP_SEG(dap);
   uint16_t dap_offset = FP_OFF(dap);
   //printf("Reading %d (%ld/%ld) sectors into %04X:%04X\n", dap->num_sectors_to_read, desc->current_sector, desc->num_sectors, *((uint16_t*)(dap->buffer_addr+2)), *((uint16_t*)(dap->buffer_addr)));
-  asm {
+  _asm {
     MOV si, desc
-    MOV dl, BYTE [si]
+    MOV dl, BYTE PTR [si]
     MOV ah, 42h
     PUSH ds
     MOV ds, dap_segment
@@ -291,11 +295,15 @@ ssize_t read_sectors_lba(drive_descriptor* desc, DAP* dap) {
     POP ds
     JNC noerror
     LEA si, status
-    MOV BYTE [si], ah
+    MOV BYTE PTR [si], ah
+    noerror:
   }
-  printf("read_sectors_lba returned status: %d\n", status);
-  return -1;
-  noerror:
+
+  if(status) {
+    printf("read_sectors_lba returned status: %d\n", status);
+    return -1;
+  }
+
   return dap->num_sectors_to_read;
 }
 

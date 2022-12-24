@@ -25,7 +25,7 @@ uint16_t get_DMA_boundary_segment(uint16_t segment) {
   // boundary for DMA transfer.
   // We need to find where within is such boundary in the segment that
   // DOS gave us and express it as a 0 offset segment.
-  return (uint16_t)(0x1000 * ceil((double)segment/0x1000)); 
+  return (uint16_t)(0x1000 * ceil((double)segment/0x1000));
 }
 
 uint16_t alloc_segment(uint16_t* segment, uint16_t* largest_block) {
@@ -35,30 +35,29 @@ uint16_t alloc_segment(uint16_t* segment, uint16_t* largest_block) {
   // least it doesn't require UMBs, and splitting the DMA transfer in
   // 2 complicates things further since the DMA boundary won't
   // necessarily be within a $SECTOR_SIZE boundary
-  asm {
+  _asm {
     MOV bx, 2000h // 8192 * 16 = 128 KB
     MOV ah, 48h
     INT 21h
     JC error
     MOV si, segment
-    MOV [si], ax
-  }
-  return status;
-
-  error:
-  asm {
+    MOV WORD PTR [si], ax
+    JMP end
+    error:
     LEA si, status
-    MOV WORD [si], ax
+    MOV WORD PTR [si], ax
     MOV si, largest_block
-    MOV WORD [si], bx
+    MOV WORD PTR [si], bx
+    end:
   }
+
   return status;
 }
 
 uint16_t free_segment(uint16_t segment) {
   uint16_t status = 0;
 
-  asm {
+  _asm {
     PUSH es
     MOV es, segment
     MOV ah, 49h
@@ -66,9 +65,9 @@ uint16_t free_segment(uint16_t segment) {
     POP es
     JNC noerror
     LEA bx, status
-    MOV WORD [bx], ax
+    MOV WORD PTR [bx], ax
+    noerror:
   }
-  noerror:
+
   return status;
 }
-

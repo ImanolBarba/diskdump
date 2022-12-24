@@ -32,8 +32,8 @@ const char ext_sequence[MAX_EXT_SEQUENCE] = {
 
 uint16_t file_tell(uint16_t handle, ulongint* file_offset) {
   uint16_t status = 0;
- 
-  asm {
+
+  _asm {
     MOV ah, 42h
     MOV al, 1
     MOV bx, handle
@@ -42,40 +42,37 @@ uint16_t file_tell(uint16_t handle, ulongint* file_offset) {
     INT 21h
     JNC noerror
     LEA si, status
-    MOV WORD [si], ax 
-  }
-  return status;
-
-  noerror:
-  asm {
+    MOV WORD PTR [si], ax
+    noerror:
     MOV si, file_offset
-    MOV WORD [si], ax
-    MOV WORD [si+2], dx
+    MOV WORD PTR [si], ax
+    MOV WORD PTR [si+2], dx
   }
   return status;
 }
 
 uint16_t file_close(uint16_t handle) {
   uint16_t status = 0;
-  
-  asm {
+
+  _asm {
     MOV ah, 3Eh
     MOV bx, handle
     INT 21h
     JNC noerror
     LEA si, status
-    MOV WORD [si], ax
+    MOV WORD PTR [si], ax
+    noerror:
   }
-  noerror:
   return status;
 }
 
 uint16_t file_creat(const char* path) {
   uint16_t handle = 0;
+  uint16_t error_code = 0;
   uint16_t path_seg = FP_SEG(path);
   uint16_t path_off = FP_OFF(path);
 
-  asm {
+  _asm {
     MOV ah, 3Ch
     XOR cx, cx
     PUSH ds
@@ -85,17 +82,18 @@ uint16_t file_creat(const char* path) {
     POP ds
     JC error
     LEA si, handle
-    MOV WORD [si], ax
+    MOV WORD PTR [si], ax
+    JMP end
+    error:
+    LEA si, error_code
+    MOV WORD PTR [si], ax
+    end:
+  }
+
+  if(error_code) {
+    printf("Error opening file: status = %d\n", handle);
   }
   return handle;
-
-  error:
-  asm {
-    LEA si, handle
-    MOV WORD [si], ax
-  }
-  printf("Error opening file: status = %d\n", handle);
-  return 0;
 }
 
 uint16_t file_write(uint16_t handle, uint16_t num_bytes, uint8_t far *buf, uint16_t* num_written) {
@@ -103,7 +101,7 @@ uint16_t file_write(uint16_t handle, uint16_t num_bytes, uint8_t far *buf, uint1
   uint16_t buf_segment = FP_SEG(buf);
   uint16_t buf_offset = FP_OFF(buf);
 
-  asm {
+  _asm {
     MOV ah, 40h
     MOV bx, handle
     MOV cx, num_bytes
@@ -114,15 +112,14 @@ uint16_t file_write(uint16_t handle, uint16_t num_bytes, uint8_t far *buf, uint1
     POP ds
     JC error
     MOV si, num_written
-    MOV WORD [si], ax
-  }
-  return 0;
-
-  error:
-  asm {
+    MOV WORD PTR [si], ax
+    JMP end
+    error:
     LEA si, status
-    MOV WORD [si], ax
+    MOV WORD PTR [si], ax
+    end:
   }
+
   return status;
 }
 
@@ -154,23 +151,23 @@ int check_free_space(uint8_t drive_number, ulongint space_needed) {
   uint16_t bytes_per_sector;
 
   ulongint free_space = 0;
-  
-  asm {
-    MOV dl, drive_number 
+
+  _asm {
+    MOV dl, drive_number
     MOV ah, 36h
     INT 21h
     LEA si, sectors_per_cluster
-    MOV WORD [si], ax
+    MOV WORD PTR [si], ax
     LEA si, available_clusters
-    MOV WORD [si], bx
+    MOV WORD PTR [si], bx
     LEA si, bytes_per_sector
-    MOV WORD [si], cx
+    MOV WORD PTR [si], cx
   }
 
   free_space = (ulongint)available_clusters * (ulongint)sectors_per_cluster * (ulongint)bytes_per_sector;
 
   return free_space > space_needed;
-} 
+}
 
 ssize_t file_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
   uint16_t status;
@@ -181,7 +178,7 @@ ssize_t file_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
   file_medium_data* fmd = (file_medium_data*)md;
   char path[MAX_PATH_LENGTH + 1];
   char filename[DUMP_FILE_NAME_LENGTH + 1];
-  
+
   while(remaining_bytes) {
     if(fmd->fd == 0) {
       if(!check_free_space(determine_drive_number(fmd->target_directory), fmd->file_size)) {
@@ -265,6 +262,3 @@ int create_file_medium(const char* target_directory, ulongint file_size, Medium*
   m->digest = digest;
   return 0;
 }
-
- 
-

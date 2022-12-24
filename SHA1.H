@@ -21,10 +21,12 @@
 #ifndef _SHA1_H
 #define _SHA1_H
 
-#include <stdio.h>
-#include <dos.h>
-#include "types.h"
 #include "digest.h"
+#include "types.h"
+
+#include <dos.h>
+#include <stdio.h>
+#include <string.h>
 
 #define SHA1_LENGTH 20
 #define SHA1_STR_LENGTH SHA1_LENGTH * 2 

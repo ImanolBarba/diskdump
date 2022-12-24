@@ -21,10 +21,12 @@
 #ifndef _SHA256_H
 #define _SHA256_H
 
-#include <stdio.h>
-#include <dos.h>
-#include "types.h"
 #include "digest.h"
+#include "types.h"
+
+#include <dos.h>
+#include <stdio.h>
+#include <string.h>
 
 #define SHA256_LENGTH 32
 #define SHA256_STR_LENGTH SHA256_LENGTH * 2 

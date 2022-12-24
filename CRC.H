@@ -21,9 +21,10 @@
 #ifndef _CRC_H
 #define _CRC_H
 
+#include "types.h"
+
 #include <stdio.h>
 #include <dos.h>
-#include "types.h"
 
 uint32_t calc_crc(uint8_t far* data, ulongint data_len);
 

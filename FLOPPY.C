@@ -20,6 +20,31 @@
 
 #include "floppy.h"
 
+int floppy_medium_ready(medium_data md) {
+  int status;
+  int retries = 0;
+  floppy_medium_data* fmd = (floppy_medium_data*)md;
+  legacy_descriptor ld;
+  ld.drive_num = fmd->ld.drive_num;
+  do {
+    status = reset_floppy(&ld);
+    if(status) {
+      printf("Error resetting disk. Try a different floppy\n");
+      system("pause");
+    }
+    status = get_drive_data_floppy(&ld);
+    if(status) {
+      printf("Floppy disk not ready. Insert floppy and retry\n");
+      system("pause");
+    }
+  }while(status && (++retries != MAX_RETRIES));
+  if(status) {
+    printf("Reached maximum retries. Giving up.\n");
+    return MEDIUM_NOT_READY;
+  }
+  return MEDIUM_READY;
+}
+
 ssize_t floppy_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
   floppy_medium_data* fmd = (floppy_medium_data*)md;
   ssize_t bytes_written;
@@ -53,31 +78,6 @@ ssize_t floppy_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
     total_written += bytes_written;
   }  
   return total_written;  
-}
-
-int floppy_medium_ready(medium_data md) {
-  int status;
-  int retries = 0;
-  floppy_medium_data* fmd = (floppy_medium_data*)md;
-  legacy_descriptor ld;
-  ld.drive_num = fmd->ld.drive_num;
-  do {
-    status = reset_floppy(&ld);
-    if(status) {
-      printf("Error resetting disk. Try a different floppy\n");
-      system("pause");
-    }
-    status = get_drive_data_floppy(&ld);
-    if(status) {
-      printf("Floppy disk not ready. Insert floppy and retry\n");
-      system("pause");
-    }
-  }while(status && (++retries != MAX_RETRIES));
-  if(status) {
-    printf("Reached maximum retries. Giving up.\n");
-    return MEDIUM_NOT_READY;
-  }
-  return MEDIUM_READY;
 }
 
 void floppy_medium_done(medium_data md, char* hash) {

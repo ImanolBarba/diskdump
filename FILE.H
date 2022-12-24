@@ -21,11 +21,13 @@
 #ifndef _FILE_H
 #define _FILE_H
 
-#include "medium.h"
 #include "digest.h"
+#include "medium.h"
+
+#include <dos.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <dos.h>
+#include <string.h>
 
 #define MAX_EXT_SEQUENCE 52
 #define MAX_PATH_LENGTH 64

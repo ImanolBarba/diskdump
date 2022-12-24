@@ -21,13 +21,16 @@
 #ifndef _DUMP_H
 #define _DUMP_H
 
-#include <stdio.h>
-#include <dos.h>
-#include <conio.h>
 #include "disk.h"
 #include "medium.h"
 #include "mem.h"
 #include "types.h"
+
+#include <dos.h>
+#include <conio.h>
+#include <graph.h>
+#include <stdio.h>
+#include <string.h>
 
 #define BAR_WIDTH 70
 #define MAX_LEN_UINT32_STR 10

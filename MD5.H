@@ -21,10 +21,12 @@
 #ifndef _MD5_H
 #define _MD5_H
 
-#include <stdio.h>
-#include <dos.h>
-#include "types.h"
 #include "digest.h"
+#include "types.h"
+
+#include <dos.h>
+#include <stdio.h>
+#include <string.h>
 
 #define MD5_LENGTH 16
 #define MD5_STR_LENGTH MD5_LENGTH * 2 

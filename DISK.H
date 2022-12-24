@@ -21,11 +21,13 @@
 #ifndef _DISK_H
 #define _DISK_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include "types.h"
+
 #include <dos.h>
 #include <math.h>
-#include "types.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define HARD_DISK_FLAG      0x80
 
@@ -47,7 +49,7 @@
 #define BPS_512  2
 #define BPS_1024 3
 
-#define DAP_SIZE 16 
+#define DAP_SIZE 16
 
 typedef uint8_t FLOPPY_TYPE;
 
