@@ -52,6 +52,7 @@ MEDIUMS:
 		/F 0x00 -- Dump to first floppy unit (A:\)
 	/S PORT Dump through the specified serial port
 	/SP SPEED speed in bps to use while transferring through serial
+	        /S COM1 /SP 115200 -- Send using COM1 port @ 115200 bps
 	/H HOSTNAME Dump to TCP server. Netcat should work
 	/P PORT TCP port to connect to. Default port is 5700
 		`/H 1.2.3.4 /P 1234` -- Dump to TCP server on 1.2.3.4:1234
