@@ -22,7 +22,7 @@ DISKDUMP works with original Intel 8088 hardware and DOS 2.0+. However, as we're
 
 ## How to build
 
-This project is built using Borland Turbo C (I'm currently using 3.0). The Makefile provided works with Borland `make`.
+This project is built using OpenWatcom 1.9/2.0. The Makefile provided works with OpenWatcom's `wmake`.
 
 To build the regular build:
 ```
@@ -31,7 +31,7 @@ C:\SOURCE\DISKDUMP\> wmake
 
 To build the debug build:
 ```
-C:\SOURCE\DISKDUMP\> make DEBUG=1
+C:\SOURCE\DISKDUMP\> wmake DEBUG=1
 ```
 
 ## Usage
@@ -49,10 +49,10 @@ MEDIUMS:
 	/Z SIZE Size in bytes of the files. Default is 1474560
 		`/D D:\DUMP /Z 1000000`
 	/F DRIVE_NUM Dump to floppy disks in the specified drive
-		/F 0x00 -- Dump to first floppy unit (A:\)
+		`/F 0x00` -- Dump to first floppy unit (A:\)
 	/S PORT Dump through the specified serial port
 	/SP SPEED speed in bps to use while transferring through serial
-	        /S COM1 /SP 115200 -- Send using COM1 port @ 115200 bps
+	        `/S COM1 /SP 115200` -- Send using COM1 port @ 115200 bps
 	/H HOSTNAME Dump to TCP server. Netcat should work
 	/P PORT TCP port to connect to. Default port is 5700
 		`/H 1.2.3.4 /P 1234` -- Dump to TCP server on 1.2.3.4:1234
