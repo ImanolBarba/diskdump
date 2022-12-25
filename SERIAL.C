@@ -400,7 +400,7 @@ void serial_medium_done(medium_data md, char* hash) {
 int create_serial_medium(const char* port, ulongint speed, void* descriptor, Medium* m, serial_medium_data* smd, Digest* digest) {
   int status = 0;
   uint serial_interrupt = COM1_INTERRUPT;
-  uint port_number = COM1_ADDR;
+  uint16_t port_number = *((uint16_t far*)COM1_ADDR_BDA);
   uint8_t speed_packet[9];
   uint8_t drive_num;
 
@@ -414,7 +414,12 @@ int create_serial_medium(const char* port, ulongint speed, void* descriptor, Med
 
   if(!strcmp(port, COM2)) {
     serial_interrupt = COM2_INTERRUPT;
-    port_number = COM2_ADDR;
+    port_number = *((uint16_t far*)COM2_ADDR_BDA);
+  }
+  
+  if(port_number == 0) {
+    printf("%s address is not defined in BIOS Data area (does it exist?)\n", port);
+    return 1;
   }
 
   status = port_open(port_number, serial_interrupt);

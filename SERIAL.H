@@ -87,12 +87,11 @@
 #define BREAK_VECTOR     0x23
 #define USER_TICK_VECTOR 0x1C
 
-// TODO: Get from BIOS DATA area instead
 #define COM1           "COM1"
-#define COM1_ADDR      0x3F8
+#define COM1_ADDR_BDA  MK_FP(0x0040, 0x0000)
 #define COM1_INTERRUPT 12
 #define COM2           "COM2"
-#define COM2_ADDR      0x2F8
+#define COM2_ADDR_BDA  MK_FP(0x0040, 0x0002)
 #define COM2_INTERRUPT 11
 
 typedef struct buffer {
