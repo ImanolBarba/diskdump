@@ -81,7 +81,8 @@
 #define DLL              0    // Divisor Latch LSB
 #define DLM              1    // Divisor Latch MSB
 
-#define IRQ_CONTROLLER   0x20
+#define IRQ_CONTROLLER_A 0x20
+#define IRQ_MASK_REG_A   0x21
 #define EOI              0x20
 #define BREAK_VECTOR     0x23
 #define USER_TICK_VECTOR 0x1C

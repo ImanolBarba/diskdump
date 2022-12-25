@@ -48,11 +48,10 @@ void interrupt far break_handler() {
 }
 
 void flush_buffer(buffer* b) {
-  if(ctrlbreak_called) {
-    return;
-  }
   while(b->write_pos != b->read_pos) {
-    // spin
+    if(ctrlbreak_called) {
+      return;
+    }
   }
 }
 
@@ -100,7 +99,7 @@ void interrupt far serial_ISR() {
       	break;
       default:
         // No valid interrupts left, write EOI to 8259
-        outp(IRQ_CONTROLLER, EOI);
+        outp(IRQ_CONTROLLER_A, EOI);
         return;
     }
   }
@@ -131,10 +130,9 @@ int port_open(uint address, uint interrupt_number) {
   old_user_tick_handler = _dos_getvect(USER_TICK_VECTOR);
   _dos_setvect(USER_TICK_VECTOR, user_tick_handler);
 
-  // IRQ_CONTROLLER + 1 is the Interrupt Mask Register
-  current_mask = (uint8_t) inp(IRQ_CONTROLLER + 1);
+  current_mask = (uint8_t) inp(IRQ_MASK_REG_A);
   // bit clear on mask means enable interrupts
-  outp(IRQ_CONTROLLER + 1, (~com->irq_mask & current_mask));
+  outp(IRQ_MASK_REG_A, (~com->irq_mask & current_mask));
   return 0;
 }
 
@@ -148,9 +146,9 @@ void port_close(PORT *p) {
 
   // Disable all serial interrupts
   outp(p->uart_base + IER, 0);
-  current_mask = (uint8_t) inp(IRQ_CONTROLLER + 1);
+  current_mask = (uint8_t) inp(IRQ_MASK_REG_A);
   // Mask serial interrupts in 8259
-  outp(IRQ_CONTROLLER + 1, p->irq_mask | current_mask);
+  outp(IRQ_MASK_REG_A, p->irq_mask | current_mask);
   // Restore old ISR for serial port
   _dos_setvect(p->interrupt_number, p->old_vector);
   // Restore old user tick handler
