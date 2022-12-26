@@ -455,13 +455,22 @@ int create_serial_medium(const char* port, ulongint speed, void* descriptor, Med
     case 9600:
       speed_packet[8] = SPEED_9600;
       break;
+    case 19200:
+      speed_packet[8] = SPEED_19200;
+      break;
+    case 38400:
+      speed_packet[8] = SPEED_38400;
+      break;
+    case 57600:
+      speed_packet[8] = SPEED_57600;
+      break;
     case 115200:
       speed_packet[8] = SPEED_115200;
       break;
     default:
       printf("Invalid speed requested. Defaulting to 1200\n");
       speed = 1200;
-      speed_packet[8] = SPEED_1200;
+      speed_packet[8] = DEFAULT_SPEED;
       break;
   };
 

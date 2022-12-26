@@ -35,11 +35,14 @@
 #define NACK 0xAA
 
 #define DEFAULT_SPEED 0
-#define SPEED_1200 0
-#define SPEED_2400 1
-#define SPEED_4800 2
-#define SPEED_9600 3
-#define SPEED_115200 4
+#define SPEED_1200    0
+#define SPEED_2400    1
+#define SPEED_4800    2
+#define SPEED_9600    3
+#define SPEED_19200   4
+#define SPEED_38400   5
+#define SPEED_57600   6
+#define SPEED_115200  7
 
 #define HASH_NONE   0
 #define HASH_MD5    1

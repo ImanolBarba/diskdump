@@ -27,7 +27,10 @@ SPEEDS = {
     1: 2400,
     2: 4800,
     3: 9600,
-    4: 115200,
+    4: 19200,
+    5: 38400,
+    6: 57600,
+    7: 115200,
 }
 
 def calcHashNone(path: str, expected: str) -> bool:

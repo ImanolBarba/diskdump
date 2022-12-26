@@ -78,15 +78,19 @@ typedef struct args {
   ulongint serial_speed;
 } args;
 
-void print_help(const char* exename) {
+const char* get_executable_name(const char* path) {
   signed short last_backslash;
-  for(last_backslash = strlen(exename); exename[last_backslash] != '\\' && last_backslash > -1; --last_backslash) {
+  for(last_backslash = strlen(path); path[last_backslash] != '\\' && last_backslash > -1; --last_backslash) {
     // nothing to see here
   }
   if(last_backslash) {
     last_backslash++;
   }
-  printf("%s ACTION MEDIUM [HASH] [OTHER]\n", exename + last_backslash);
+  return path + last_backslash;
+}
+
+void print_help(const char* exename) {
+  printf("%s ACTION MEDIUM [HASH] [OTHER]\n", get_executable_name(exename));
   printf("\n");
   printf("ACTIONS:\n");
   printf("\t/L List all drives reported by BIOS\n");
@@ -109,6 +113,8 @@ void print_help(const char* exename) {
   printf("\t/O Dump data directly to stdout. Can be piped or redirected to a file\n");
   printf("\t/0 Don't dump data. Useful to only calculate hash\n");
   printf("\n");
+  // First page of help
+  system("pause");
   printf("HASHES:\n");
   printf("\t/MD5 Calculate MD5 hash\n");
   printf("\t/SHA Calculate SHA1 hash. Somewhat slow\n");
@@ -117,6 +123,7 @@ void print_help(const char* exename) {
   printf("OTHER FLAGS:\n");
   printf("\t/B Display progress bar\n");
   printf("\t/Q Quiet. Don't print anything to stdout. Necessary with /O\n");
+  printf("\n");
 }
 
 int parse_num(long* num, const char* num_str) {
@@ -200,11 +207,14 @@ int parse_args(int argc, char** argv, args* cmd) {
         case 2400:
         case 4800:
         case 9600:
+        case 19200:
+        case 38400:
+        case 57600:  
         case 115200:
           cmd->serial_speed = num;
           break;
         default:
-          printf("Unsupported speed requested: %ul\n", num);
+          printf("Unsupported speed requested: %lu\n", num);
           return 1;
       }
     } else if(!strcmp(argv[i], "/H")) {
@@ -356,7 +366,9 @@ int main(int argc, char **argv) {
   memset(&cmd, 0x00, sizeof(args));
   status = parse_args(argc, argv, &cmd);
   if(status) {
-    print_help(argv[0]);
+    // Don't print help in this occasion so the user can see what
+    // went wrong
+    printf("For help, run: %s /?\n", get_executable_name(argv[0]));
     return 1;
   }
   if(cmd.list) {
@@ -478,8 +490,9 @@ int main(int argc, char **argv) {
       m.done(m.data, NULL);
     }
   } else {
-    // I don't know WTF we're doing so, let's print help
-    print_help(argv[0]);
+    // I don't know WTF we're doing
+    printf("No action selected\n");
+    printf("For help, run: %s /?\n", get_executable_name(argv[0]));
   }
   return 0;
 }
