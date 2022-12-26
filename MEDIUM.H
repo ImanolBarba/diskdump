@@ -42,6 +42,7 @@ typedef struct Medium {
   medium_data data;
   medium_done done;
   Digest* digest;
+  ulongint mtu;
 } Medium;
 
 #endif

@@ -32,7 +32,7 @@
 #define MAX_EXT_SEQUENCE 52
 #define MAX_PATH_LENGTH 64
 #define DUMP_FILE_NAME_LENGTH 8
-#define MAX_BYTES_TO_WRITE 0xFFFF // This goes to a 16bit register
+#define MAX_BYTES_FILE 0xFFFF // This goes to a 16bit register
 #define DEFAULT_FILE_SIZE 1474560
 
 #define DOS_FILE_RD        0x00

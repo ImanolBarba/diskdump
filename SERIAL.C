@@ -363,7 +363,11 @@ void serial_medium_done(medium_data md, char* hash) {
   serial_medium_data* smd = (serial_medium_data*)md;
 
   memcpy(footer, "DISKDUMP", 8);
-  hash_len = strlen(hash);
+  if(hash == NULL) {
+    hash_len = 0;
+  } else {
+    hash_len = strlen(hash);
+  }
 
   switch(hash_len) {
     case HASH_LENGTH_NONE:
@@ -509,5 +513,6 @@ int create_serial_medium(const char* port, ulongint speed, void* descriptor, Med
   m->data = (void*)smd;
   m->done = &serial_medium_done;
   m->digest = digest;
+  m->mtu = 0;
   return 0;
 }

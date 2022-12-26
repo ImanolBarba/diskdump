@@ -21,10 +21,24 @@
 #include "stdout.h"
 
 ssize_t stdout_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
-  unsigned whatever;
-  unsigned status;
+  unsigned bytes_written = 0;
+  unsigned status = 0;
+  ulongint total_bytes_written = 0;
+  unsigned bytes_to_write = 0;
   md = md;
-  _dos_write(1, buf, buf_len, &whatever);
+  while(total_bytes_written != buf_len) {
+    bytes_to_write = min((buf_len - total_bytes_written), MAX_BYTES_STDOUT);
+    status = _dos_write(1, buf + total_bytes_written, bytes_to_write, &bytes_written);
+    if(status != 0) {
+      printf("Error writing to stdout. Error code: %d\n", status);
+      return -1;
+    }
+    if(bytes_written == 0) {
+      printf("Nothing was written, wtf???\n");
+      return -1;
+    }
+    total_bytes_written += bytes_written;
+  }
   return buf_len;
 }
 
@@ -44,4 +58,5 @@ void create_stdout_medium(Medium* m, Digest* digest) {
   m->data = NULL;
   m->done = &stdout_medium_done;
   m->digest = digest;
+  m->mtu = MAX_BYTES_STDOUT;
 }

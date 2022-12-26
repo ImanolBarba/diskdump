@@ -22,8 +22,12 @@
 #define _STDOUT_H
 
 #include <dos.h>
+#include <stdlib.h>
+
 #include "medium.h"
 #include "digest.h"
+
+#define MAX_BYTES_STDOUT 0xFFFF
 
 void create_stdout_medium(Medium* m, Digest* digest);
 

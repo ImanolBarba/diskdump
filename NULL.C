@@ -42,4 +42,5 @@ void create_null_medium(Medium* m, Digest* digest) {
   m->data = NULL;
   m->done = &null_medium_done;
   m->digest = digest;
+  m->mtu = 0;
 }

@@ -74,4 +74,5 @@ void create_hex_medium(Medium* m, hex_medium_data* hmd, Digest* digest) {
   m->data = (void*)hmd;
   m->done = &hex_medium_done;
   m->digest = digest;
+  m->mtu = 0;
 }

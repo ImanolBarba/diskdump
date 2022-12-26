@@ -136,7 +136,8 @@ int dump_floppy_drive(legacy_descriptor* ld, Medium* m) {
   ssize_t bytes_read, bytes_sent;
   uint8_t far *buf;
   uint retries = 0;
-
+  ulongint sectors_to_read = 0;
+  
   uint16_t status = alloc_segment(&segment, &largest_block);
   if(status) {
     printf("Failed to allocate segment. Error: %04X.\nLargest block: %04X\n", status, largest_block);
@@ -152,14 +153,20 @@ int dump_floppy_drive(legacy_descriptor* ld, Medium* m) {
     printf("Unable to reset floppy before dump\n");
     return -1;
   }
-
-  while((bytes_read = read_drive_chs(ld, buf, MAX_SECTORS_CHS)) != 0) {
+  sectors_to_read = MAX_SECTORS_CHS;
+  if(m->mtu) {
+    sectors_to_read = min((MAX_SECTORS_CHS*(ulongint)ld->sector_size), m->mtu)/ld->sector_size;
+  }
+  while((bytes_read = read_drive_chs(ld, buf, sectors_to_read)) != 0) {
     if(bytes_read < 0) {
       printf("Failed to read floppy\n");
       free_segment(segment);
       return -1;
     }
     retry:
+    if(m->mtu && bytes_read > m->mtu) {
+      printf("Warning: data read is over medium MTU, writes might be inefficient\n");
+    }
     bytes_sent = m->send(buf, bytes_read, m->data);
     if(bytes_read != bytes_sent) {
       printf("Came short when transferring to medium :(\n");
@@ -200,6 +207,7 @@ int dump_hard_drive(drive_descriptor* dd, Medium* m) {
   uint8_t far *buf;
   uint16_t status;
   uint retries = 0;
+  ulongint sectors_to_read = 0;
   legacy_descriptor ld;
 
   if(!check_extensions_present(dd->drive_num)) {
@@ -227,13 +235,20 @@ int dump_hard_drive(drive_descriptor* dd, Medium* m) {
   // We will only request the maximum sectors of LBA that can be read
   // at once tops, if we go for maximum 128 we end up doing 2 transfers,
   // one for 127 sectors and 1 for 1 sector, which is inefficient.
-  while((bytes_read = read_drive_lba(dd, buf, MAX_SECTORS_LBA)) != 0) {
+  sectors_to_read = MAX_SECTORS_LBA;
+  if(m->mtu) { 
+    sectors_to_read = min((MAX_SECTORS_LBA*(ulongint)dd->sector_size), m->mtu)/dd->sector_size;
+  }
+  while((bytes_read = read_drive_lba(dd, buf, sectors_to_read)) != 0) {
     if(bytes_read < 0) {
       printf("Failed to read disk\n");
       free_segment(segment);
       return -1;
     }
     retry:
+    if(m->mtu && bytes_read > m->mtu) {
+      printf("Warning: data read is over medium MTU, writes might be inefficient\n");
+    }
     bytes_sent = m->send(buf, bytes_read, m->data);
     if(bytes_read != bytes_sent) {
       printf("Came short when transferring to medium :(\n");

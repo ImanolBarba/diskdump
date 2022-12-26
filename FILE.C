@@ -202,7 +202,7 @@ ssize_t file_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
       }
       return -1;
     }
-    bytes_to_write = min(remaining_bytes, MAX_BYTES_TO_WRITE);
+    bytes_to_write = min(remaining_bytes, MAX_BYTES_FILE);
     bytes_to_write = min(bytes_to_write, fmd->file_size - current_pos);
     status = file_write(fmd->fd, bytes_to_write, buf + (buf_len - remaining_bytes), &bytes_written);
     if(status) {
@@ -260,5 +260,6 @@ int create_file_medium(const char* target_directory, ulongint file_size, Medium*
   m->data = (void*)fmd;
   m->done = &file_medium_done;
   m->digest = digest;
+  m->mtu = MAX_BYTES_FILE;
   return 0;
 }

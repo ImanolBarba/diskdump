@@ -50,6 +50,8 @@ ssize_t floppy_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
   ssize_t bytes_written;
   int status;
   ssize_t total_written = 0;
+  ulongint bytes_to_write = 0;
+  
   if(buf_len % fmd->ld.sector_size != 0) {
     printf("Length of buffer must be a multiple of sector size\n");
     return -1;
@@ -70,7 +72,8 @@ ssize_t floppy_medium_send(uint8_t far *buf, ulongint buf_len, medium_data md) {
         return -1;
       }
     }
-    bytes_written = write_drive_chs(&(fmd->ld), buf, (buf_len-total_written)/fmd->ld.sector_size);
+    bytes_to_write = min((buf_len - total_written), 0xFF * fmd->ld.sector_size);   
+    bytes_written = write_drive_chs(&(fmd->ld), buf, ceil(bytes_to_write/fmd->ld.sector_size));
     if(bytes_written < 0) {
       printf("Error writing to floppy\n");
       return -1;
@@ -91,6 +94,7 @@ int create_floppy_medium(Medium* m, floppy_medium_data* fmd, Digest* digest) {
   m->data = (void*)fmd;
   m->done = &floppy_medium_done;
   m->digest = digest;
+  m->mtu = 0xFF * fmd->ld.sector_size;
   return m->ready(m->data);
 }
 
